@@ -1,0 +1,97 @@
+{
+  "expo": {
+    "name": "RESQORA",
+    "slug": "resqora",
+    "version": "2.0.2",
+    "runtimeVersion": "2.0.2",
+    "updates": {
+      "url": "https://u.expo.dev/c8f3439c-aa58-4004-9ddf-6336e4f46c3b",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a1628"
+    },
+    "scheme": "resqora",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.resqora.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RESQORA needs your location to alert nearby responders in an emergency.",
+        "NSLocationAlwaysUsageDescription": "RESQORA needs background location to keep you protected at all times.",
+        "NSCameraUsageDescription": "RESQORA lets you photograph the scene so nearby responders know what they are coming to.",
+        "NSPhotoLibraryUsageDescription": "RESQORA lets you attach one photo to your emergency alert.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.resqora.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "POST_NOTIFICATIONS",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "versionCode": 4,
+      "usesCleartextTraffic": false
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "RESQORA needs location access to protect you."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "RESQORA lets you attach one photo to your emergency alert.",
+          "cameraPermission": "RESQORA lets you photograph the scene so nearby responders know what they are coming to."
+        }
+      ],
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#EF4444",
+          "defaultChannel": "sos-alerts"
+        }
+      ],
+      "expo-status-bar",
+      "expo-audio"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "supabaseUrl": "https://zwvpqwudjvceusdcrdgv.supabase.co",
+      "supabasePublishableKey": "sb_publishable_tr50sOq2OTQa8ZDt66mbHg_HHnacqB6",
+      "apiUrl": "https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api",
+      "eas": {
+        "projectId": "c8f3439c-aa58-4004-9ddf-6336e4f46c3b"
+      },
+    },
+    "notification": {
+      "color": "#EF4444",
+      "androidMode": "default"
+    }
+  }
+}

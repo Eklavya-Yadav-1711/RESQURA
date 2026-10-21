@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RESQORA — Project Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 15mm 14mm 14mm; }
+
+  :root {
+    --red: #DC2626;
+    --red-dark: #991B1B;
+    --red-soft: #FEF2F2;
+    --green: #15803D;
+    --green-soft: #F0FDF4;
+    --blue: #1D4ED8;
+    --blue-soft: #EFF6FF;
+    --amber-soft: #FFFBEB;
+    --amber: #B45309;
+    --ink: #0F172A;
+    --body: #334155;
+    --muted: #64748B;
+    --line: #E2E8F0;
+    --bg-soft: #F8FAFC;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    color: var(--body);
+    font-size: 10.2pt;
+    line-height: 1.55;
+    background: #fff;
+  }
+
+  h1, h2, h3, h4 { color: var(--ink); margin: 0; font-weight: 700; }
+  p { margin: 0 0 8px; }
+  strong { color: var(--ink); font-weight: 600; }
+  code, .mono { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-size: 8.6pt; }
+  code { background: var(--bg-soft); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  ul { margin: 0 0 8px; padding-left: 17px; }
+  li { margin-bottom: 3px; }
+
+  /* ---------- cover ---------- */
+  .cover { height: 262mm; display: flex; flex-direction: column; }
+  .cover-mark {
+    width: 62px; height: 62px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--red), var(--red-dark));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 30px; font-weight: 800; margin-bottom: 26mm;
+  }
+  .cover h1 { font-size: 52pt; letter-spacing: -2px; line-height: 1; font-weight: 800; }
+  .cover .rule { width: 74px; height: 5px; background: var(--red); margin: 12px 0 16px; border-radius: 3px; }
+  .cover .lede { font-size: 15pt; color: var(--ink); font-weight: 500; max-width: 135mm; line-height: 1.4; }
+  .cover .sub { font-size: 10.5pt; color: var(--muted); margin-top: 10px; max-width: 130mm; }
+  .cover-spacer { flex: 1; }
+  .cover-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14mm; }
+  .cover-stat { border-top: 2px solid var(--ink); padding-top: 8px; }
+  .cover-stat .n { font-size: 20pt; font-weight: 800; color: var(--ink); line-height: 1.1; }
+  .cover-stat .l { font-size: 8pt; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .cover-foot { border-top: 1px solid var(--line); padding-top: 10px; display: flex; justify-content: space-between; font-size: 9pt; color: var(--muted); }
+
+  /* ---------- structure ---------- */
+  .page { break-before: page; }
+  section { margin-bottom: 11mm; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 6px; margin-bottom: 12px; }
+  .sec-num { font-size: 9pt; font-weight: 700; color: var(--red); letter-spacing: 1px; }
+  .sec-head h2 { font-size: 16pt; letter-spacing: -0.4px; }
+  h3 { font-size: 11pt; margin: 14px 0 5px; }
+  h4 { font-size: 9.5pt; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+  .kicker { font-size: 10.5pt; color: var(--ink); font-weight: 500; margin-bottom: 10px; }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9pt; }
+  th { text-align: left; font-weight: 600; color: var(--ink); border-bottom: 1.5px solid var(--ink); padding: 6px 8px 6px 0; font-size: 8.4pt; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  tr { break-inside: avoid; }
+  .t-mono td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 8.2pt; color: var(--ink); white-space: nowrap; }
+  .verb { display: inline-block; min-width: 34px; font-weight: 600; font-size: 7.6pt; }
+  .g { color: var(--green); } .p { color: var(--blue); } .d { color: var(--red); }
+
+  /* ---------- cards & callouts ---------- */
+  .grid { display: grid; gap: 9px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .card { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; break-inside: avoid; background: #fff; }
+  .card h4 { margin: 0 0 4px; color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 10pt; font-weight: 600; }
+  .card p { margin: 0; font-size: 9pt; }
+  .card .tag { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; color: var(--red); display: block; margin-bottom: 3px; }
+
+  .callout { border-left: 3px solid var(--red); background: var(--red-soft); padding: 9px 12px; border-radius: 0 8px 8px 0; margin: 10px 0; break-inside: avoid; font-size: 9.2pt; }
+  .callout.good { border-color: var(--green); background: var(--green-soft); }
+  .callout.info { border-color: var(--blue); background: var(--blue-soft); }
+  .callout.warn { border-color: var(--amber); background: var(--amber-soft); }
+  .callout strong { display: block; margin-bottom: 2px; }
+
+  .pill { display: inline-block; font-size: 7.6pt; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--bg-soft); color: var(--muted); border: 1px solid var(--line); }
+  .pill.done { background: var(--green-soft); color: var(--green); border-color: #BBF7D0; }
+  .pill.new { background: var(--red-soft); color: var(--red); border-color: #FECACA; }
+
+  .steps { counter-reset: s; }
+  .step { display: flex; gap: 11px; margin-bottom: 9px; break-inside: avoid; }
+  .step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: #fff; font-size: 8.5pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .step-b { flex: 1; }
+  .step-b b { color: var(--ink); font-size: 9.6pt; }
+  .step-b p { font-size: 9pt; margin: 1px 0 0; }
+
+  figure { margin: 10px 0 14px; break-inside: avoid; }
+  figcaption { font-size: 8.2pt; color: var(--muted); margin-top: 5px; text-align: center; }
+  svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  .foot-note { font-size: 8.4pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 7px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- ======================= COVER ======================= -->
+<div class="cover">
+  <div class="cover-mark">R</div>
+
+  <h1>RESQORA</h1>
+  <div class="rule"></div>
+  <div class="lede">A community emergency response network — when seconds matter, the people already closest to you become the first responders.</div>
+  <p class="sub">Project report and technical documentation. A React&nbsp;Native application with a real-time Node.js backend, built to alert, locate and coordinate help within a 2&nbsp;km radius.</p>
+
+  <div class="cover-spacer"></div>
+
+  <div class="cover-stats">
+    <div class="cover-stat"><div class="n">2 km</div><div class="l">Alert radius</div></div>
+    <div class="cover-stat"><div class="n">&lt;100 ms</div><div class="l">Alert delivery</div></div>
+    <div class="cover-stat"><div class="n">140</div><div class="l">Automated checks</div></div>
+    <div class="cover-stat"><div class="n">₹0</div><div class="l">Paid APIs used</div></div>
+  </div>
+
+  <div class="cover-foot">
+    <span>Project Report · Version 2.0</span>
+    <span>React Native · Node.js · Socket.IO · SQLite · OpenStreetMap</span>
+  </div>
+</div>
+
+<!-- ======================= 1. PROBLEM ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>The problem, and the idea</h2></div>
+
+  <p class="kicker">In an emergency, the fastest help is not the official kind — it is the person two streets away who has no idea anything is wrong.</p>
+
+  <p>Calling 100 or 112 starts a process: a call is taken, an address is understood, a vehicle is dispatched, traffic is crossed. That process is measured in tens of minutes. Meanwhile the person who could have reached you in ninety seconds walks past, unaware.</p>
+
+  <p>RESQORA closes that gap. One button broadcasts your live location, a message and a photo to every registered user within two kilometres, instantly and simultaneously. They see how far away you are, accept with one tap, and navigate to you on a live map while you watch them approach.</p>
+
+  <div class="grid g3">
+    <div class="card"><span class="tag">Who it is for</span><p>Anyone who walks home alone, travels at night, or lives somewhere help is slow to arrive.</p></div>
+    <div class="card"><span class="tag">What makes it different</span><p>No call centre, no dispatcher, no middle layer. Peer to peer, over a socket, in under a tenth of a second.</p></div>
+    <div class="card"><span class="tag">The hard constraint</span><p>An alert that reaches nobody is a failure. Three separate fallbacks exist for exactly that case.</p></div>
+  </div>
+
+  <div class="callout info">
+    <strong>The design principle behind every decision here</strong>
+    An emergency feature that only works when conditions are good is not a feature. The phone will be backgrounded, the socket will drop, the network will be poor, nobody may be nearby, and the battery will die. Each of those was treated as the normal case, not the exception.
+  </div>
+</section>
+
+<!-- ======================= 2. SOS JOURNEY ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>How an SOS travels</h2></div>
+
+  <figure>
+    <svg viewBox="0 0 660 200" width="660" height="200" role="img" aria-label="Flow of an SOS from the victim through the server to responders">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 z" fill="#94A3B8"/>
+        </marker>
+      </defs>
+
+      <rect x="4" y="62" width="120" height="72" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+      <text x="64" y="88" text-anchor="middle" font-size="11" font-weight="700" fill="#0F172A">Victim's phone</text>
+      <text x="64" y="104" text-anchor="middle" font-size="9" fill="#64748B">Hold 3s → 5s cancel</text>
+      <text x="64" y="118" text-anchor="middle" font-size="9" fill="#64748B">GPS + message + photo</text>
+
+      <line x1="126" y1="98" x2="196" y2="98" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="161" y="92" text-anchor="middle" font-size="8" fill="#64748B">HTTPS</text>
+
+      <rect x="198" y="46" width="150" height="104" rx="10" fill="#0F172A"/>
+      <text x="273" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">RESQORA server</text>
+      <text x="273" y="90" text-anchor="middle" font-size="8.5" fill="#CBD5E1">1. Store session + photo</text>
+      <text x="273" y="105" text-anchor="middle" font-size="8.5" fill="#CBD5E1">2. Haversine within 2 km</text>
+      <text x="273" y="120" text-anchor="middle" font-size="8.5" fill="#CBD5E1">3. Fan out to everyone</text>
+      <text x="273" y="135" text-anchor="middle" font-size="8.5" fill="#CBD5E1">4. Mint tracking link</text>
+
+      <line x1="350" y1="72" x2="418" y2="40" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="350" y1="98" x2="418" y2="98" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="350" y1="124" x2="418" y2="156" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <rect x="420" y="12" width="234" height="56" rx="9" fill="#F0FDF4" stroke="#BBF7D0"/>
+      <text x="432" y="32" font-size="10" font-weight="700" fill="#0F172A">Neighbours with the app open</text>
+      <text x="432" y="48" font-size="8.5" fill="#475569">Socket push · siren · vibration · red sheet</text>
+      <text x="432" y="61" font-size="8.5" fill="#475569">Live map, route line, distance</text>
+
+      <rect x="420" y="72" width="234" height="52" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
+      <text x="432" y="92" font-size="10" font-weight="700" fill="#0F172A">Neighbours with the app closed</text>
+      <text x="432" y="108" font-size="8.5" fill="#475569">Expo push notification, tap to respond</text>
+
+      <rect x="420" y="128" width="234" height="60" rx="9" fill="#FFFBEB" stroke="#FDE68A"/>
+      <text x="432" y="148" font-size="10" font-weight="700" fill="#0F172A">People not on RESQORA at all</text>
+      <text x="432" y="164" font-size="8.5" fill="#475569">Prefilled SMS to saved contacts</text>
+      <text x="432" y="177" font-size="8.5" fill="#475569">Public live-tracking link, any browser</text>
+    </svg>
+    <figcaption>One button press reaches three different audiences over three different channels.</figcaption>
+  </figure>
+
+  <div class="steps">
+    <div class="step"><div class="step-n">1</div><div class="step-b"><b>Hold to arm, then a window to cancel</b><p>Three seconds of deliberate pressure prevents pocket triggers; a five-second countdown follows, cancellable, during which a photo can be attached. Both gates live on one screen — an emergency should never cost an extra navigation.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-b"><b>The server decides who is near</b><p>The Haversine formula computes great-circle distance to every located user. Anyone inside the 2 km radius is written into the responder table as <code>alerted</code>.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-b"><b>Live sockets first, push second</b><p>Every alerted user with an open socket receives the alert immediately. Only those without one fall back to a push notification, so nobody is alerted twice and nobody is missed.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-b"><b>Both sides watch each other move</b><p>The victim's screen plots every responder converging on them; each responder sees the victim, a dashed route line and a live distance that updates as either of them moves.</p></div></div>
+    <div class="step"><div class="step-n">5</div><div class="step-b"><b>Arrival, and the end</b><p>A responder marks arrival; the victim's list updates in place. When the victim marks themselves safe, every responder is told at once and location sharing stops in the same instant.</p></div></div>
+  </div>
+</section>
+</div>
+
+<!-- ======================= 3. ARCHITECTURE ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>System architecture</h2></div>
+
+  <figure>
+    <svg viewBox="0 0 660 290" width="660" height="290" role="img" aria-label="Architecture diagram">
+      <rect x="2" y="18" width="176" height="252" rx="11" fill="#FAFAFA" stroke="#E2E8F0"/>
+      <text x="90" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0F172A">Mobile app</text>
+      <text x="90" y="53" text-anchor="middle" font-size="8" fill="#94A3B8">React Native · Expo SDK 54</text>
+
+      <rect x="14" y="64" width="152" height="30" rx="7" fill="#fff" stroke="#E2E8F0"/>
+      <text x="24" y="83" font-size="8.6" fill="#334155">9 screens · Expo Router v6</text>
+      <rect x="14" y="100" width="152" height="30" rx="7" fill="#fff" stroke="#E2E8F0"/>
+      <text x="24" y="119" font-size="8.6" fill="#334155">Design system · theme + ui kit</text>
+      <rect x="14" y="136" width="152" height="30" rx="7" fill="#fff" stroke="#E2E8F0"/>
+      <text x="24" y="155" font-size="8.6" fill="#334155">Leaflet map in a WebView</text>
+      <rect x="14" y="172" width="152" height="30" rx="7" fill="#fff" stroke="#E2E8F0"/>
+      <text x="24" y="191" font-size="8.6" fill="#334155">GPS · camera · SMS · push</text>
+      <rect x="14" y="208" width="152" height="30" rx="7" fill="#fff" stroke="#E2E8F0"/>
+      <text x="24" y="227" font-size="8.6" fill="#334155">api.js — REST + Socket.IO</text>
+      <text x="90" y="256" text-anchor="middle" font-size="8" fill="#94A3B8">4,081 lines</text>
+
+      <line x1="180" y1="120" x2="232" y2="120" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="206" y="114" text-anchor="middle" font-size="7.5" fill="#64748B">REST</text>
+      <line x1="232" y1="150" x2="180" y2="150" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <text x="206" y="163" text-anchor="middle" font-size="7.5" fill="#64748B">WebSocket</text>
+
+      <rect x="234" y="18" width="190" height="252" rx="11" fill="#0F172A"/>
+      <text x="329" y="40" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">Node.js server</text>
+      <text x="329" y="53" text-anchor="middle" font-size="8" fill="#94A3B8">Express · Socket.IO</text>
+
+      <rect x="246" y="64" width="166" height="26" rx="7" fill="#1E293B"/>
+      <text x="256" y="81" font-size="8.4" fill="#E2E8F0">index.js — 32 REST routes</text>
+      <rect x="246" y="94" width="166" height="26" rx="7" fill="#1E293B"/>
+      <text x="256" y="111" font-size="8.4" fill="#E2E8F0">database.js — schema + queries</text>
+      <rect x="246" y="124" width="166" height="26" rx="7" fill="#1E293B"/>
+      <text x="256" y="141" font-size="8.4" fill="#E2E8F0">storage.js — photos to disk</text>
+      <rect x="246" y="154" width="166" height="26" rx="7" fill="#1E293B"/>
+      <text x="256" y="171" font-size="8.4" fill="#E2E8F0">places.js — Overpass + cache</text>
+      <rect x="246" y="184" width="166" height="26" rx="7" fill="#1E293B"/>
+      <text x="256" y="201" font-size="8.4" fill="#E2E8F0">push.js · track-page.js · auth.js</text>
+      <rect x="246" y="214" width="166" height="26" rx="7" fill="#7F1D1D"/>
+      <text x="256" y="231" font-size="8.4" fill="#FECACA">timer sweep — every 15 s</text>
+      <text x="329" y="258" text-anchor="middle" font-size="8" fill="#64748B">2,168 lines</text>
+
+      <line x1="426" y1="90" x2="478" y2="66" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="426" y1="128" x2="478" y2="128" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="426" y1="170" x2="478" y2="192" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+      <line x1="426" y1="210" x2="478" y2="248" stroke="#94A3B8" stroke-width="1.4" marker-end="url(#ar)"/>
+
+      <rect x="480" y="42" width="174" height="46" rx="9" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="492" y="61" font-size="9.4" font-weight="600" fill="#0F172A">SQLite (node:sqlite)</text>
+      <text x="492" y="76" font-size="8.2" fill="#64748B">5 tables · WAL mode · file-based</text>
+
+      <rect x="480" y="104" width="174" height="46" rx="9" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="492" y="123" font-size="9.4" font-weight="600" fill="#0F172A">uploads/ on disk</text>
+      <text x="492" y="138" font-size="8.2" fill="#64748B">SOS photos, served over HTTP</text>
+
+      <rect x="480" y="166" width="174" height="46" rx="9" fill="#F0FDF4" stroke="#BBF7D0"/>
+      <text x="492" y="185" font-size="9.4" font-weight="600" fill="#0F172A">OpenStreetMap</text>
+      <text x="492" y="200" font-size="8.2" fill="#64748B">Tiles + Overpass API · no key</text>
+
+      <rect x="480" y="228" width="174" height="46" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
+      <text x="492" y="247" font-size="9.4" font-weight="600" fill="#0F172A">Expo Push Service</text>
+      <text x="492" y="262" font-size="8.2" fill="#64748B">Background alerts, app closed</text>
+    </svg>
+    <figcaption>Two processes and one file-based database. Every external dependency is free and replaceable.</figcaption>
+  </figure>
+
+  <h3>Why this shape</h3>
+  <table>
+    <tr><td style="width:31%"><strong>One server process</strong></td><td>REST and WebSocket share memory, so the socket registry and the database are always consistent. No queue, no cache layer, nothing to fall out of sync.</td></tr>
+    <tr><td><strong>SQLite, not Postgres</strong></td><td>Node 22+ ships <code>node:sqlite</code> in the standard library. Zero setup, zero credentials, one file to back up — and comfortably fast for a campus or neighbourhood deployment.</td></tr>
+    <tr><td><strong>Photos on disk, URLs in the database</strong></td><td>A 400 KB photo never travels through SQLite or a socket frame. Only a short URL does.</td></tr>
+    <tr><td><strong>ngrok in front</strong></td><td>Gives the laptop a public HTTPS address, so phones work on any network — mobile data included — without deploying anywhere.</td></tr>
+  </table>
+</section>
+</div>
+
+<!-- ======================= 4. FEATURES ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>What the system does</h2></div>
+
+  <h3>The core loop</h3>
+  <div class="grid g2">
+    <div class="card"><span class="tag">Trigger</span><h4>Hold, confirm, send</h4><p>Two safety gates on one screen. A photo of the scene can be attached before it goes, or added later while help is on the way.</p></div>
+    <div class="card"><span class="tag">Broadcast</span><h4>Everyone within 2 km</h4><p>Location, a default message and the photo, delivered by socket in under 100 ms, or by push notification if the app is closed.</p></div>
+    <div class="card"><span class="tag">Respond</span><h4>Live two-way map</h4><p>Real OpenStreetMap. The responder sees the victim and a route line; the victim watches each responder close the distance.</p></div>
+    <div class="card"><span class="tag">Resolve</span><h4>Arrival and all-clear</h4><p>Arrival updates the victim's screen instantly. Marking yourself safe notifies everyone and stops location sharing in the same moment.</p></div>
+  </div>
+
+  <h3>Reaching beyond the network <span class="pill new">Added in v2</span></h3>
+  <div class="grid g2">
+    <div class="card"><h4>Emergency contacts</h4><p>Up to five trusted people. Raising an SOS opens your messaging app with all of them and the alert prefilled — one tap to send. No SMS gateway, no cost, and the message genuinely comes from your number.</p></div>
+    <div class="card"><h4>Public live-tracking link</h4><p>Every SOS mints an unguessable URL. It opens a live map of the person's position, message and photo in any browser — no app, no account. It stops updating and says so the moment the emergency ends.</p></div>
+  </div>
+
+  <h3>Protection before anything happens <span class="pill new">Added in v2</span></h3>
+  <div class="grid g2">
+    <div class="card"><h4>Safety timer</h4><p>“Expect me in 20 minutes.” Miss the check-in and the server raises a full SOS on your behalf, using your last known position. The deadline lives on the server, so it fires even if the phone is taken, switched off or out of battery.</p></div>
+    <div class="card"><h4>Nearest official help</h4><p>Nearest police stations and hospitals from OpenStreetMap, with distance, one-tap calling and directions — plus a permanent <strong>Call 112</strong> button that works even when the lookup does not.</p></div>
+  </div>
+
+  <h3>Everything else</h3>
+  <table>
+    <tr><td style="width:24%"><strong>Accounts</strong></td><td>Phone and password, bcrypt hashing, 30-day JWT, automatic sign-in on reopen.</td></tr>
+    <tr><td><strong>History</strong></td><td>Every SOS kept permanently — time, duration, message, photo and who came. Grouped by day; an active one is tappable to rejoin it.</td></tr>
+    <tr><td><strong>Profile</strong></td><td>Stats, alert radius, emergency contacts, and a “clear active SOS” escape hatch.</td></tr>
+    <tr><td><strong>Withdrawal</strong></td><td>“I can't make it” tells the victim, so they stop counting on someone who is not coming.</td></tr>
+    <tr><td><strong>Recovery</strong></td><td>Missed alerts are replayed, stuck sessions can be cleared, and forgotten ones auto-resolve after six hours.</td></tr>
+  </table>
+</section>
+
+<!-- ======================= 5. STACK ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>Technology used</h2></div>
+
+  <h4>Mobile application</h4>
+  <table class="t-mono">
+    <tr><td>expo ~54</td><td>Managed React Native toolchain — build, assets, native modules without Xcode or Android Studio.</td></tr>
+    <tr><td>expo-router 6</td><td>File-based navigation. Every file under <code>app/</code> is a route.</td></tr>
+    <tr><td>socket.io-client</td><td>The real-time channel. Auto-reconnects, which the recovery logic depends on.</td></tr>
+    <tr><td>react-native-webview</td><td>Hosts the Leaflet map — how a real map arrives with no API key.</td></tr>
+    <tr><td>expo-location</td><td>GPS: a one-shot fix at trigger time and a distance-filtered watcher during an emergency.</td></tr>
+    <tr><td>expo-image-picker</td><td>Camera and gallery for the scene photo.</td></tr>
+    <tr><td>expo-notifications</td><td>Push registration, an emergency-priority Android channel, and tap-to-respond.</td></tr>
+    <tr><td>expo-sms / expo-clipboard</td><td>Prefilled messages to emergency contacts; copying the tracking link.</td></tr>
+    <tr><td>expo-av</td><td>The alert siren on an incoming SOS.</td></tr>
+    <tr><td>@expo/vector-icons</td><td>Ionicons throughout — no emoji standing in for an icon.</td></tr>
+    <tr><td>@expo-google-fonts/inter</td><td>Inter, with tabular figures so timers and distances do not jitter.</td></tr>
+  </table>
+
+  <h4>Server</h4>
+  <table class="t-mono">
+    <tr><td>express</td><td>32 REST routes, static photo serving, JSON error handling.</td></tr>
+    <tr><td>socket.io</td><td>Real-time fan-out, with a userId → many-sockets registry for multi-device delivery.</td></tr>
+    <tr><td>node:sqlite</td><td>Built into Node 22+. Five tables, WAL mode, prepared statements everywhere.</td></tr>
+    <tr><td>bcryptjs</td><td>Password hashing at cost factor 10.</td></tr>
+    <tr><td>jsonwebtoken</td><td>Signed 30-day tokens; an optional-auth variant personalises public endpoints.</td></tr>
+    <tr><td>node:crypto / node:fs</td><td>Unguessable tracking tokens; photo storage on disk.</td></tr>
+  </table>
+
+  <h4>External services — all free, none requiring a key or a card</h4>
+  <table class="t-mono">
+    <tr><td>OpenStreetMap</td><td>Map tiles (CARTO dark style) and place data.</td></tr>
+    <tr><td>Overpass API</td><td>Nearest police stations and hospitals. Two mirrors, cached an hour.</td></tr>
+    <tr><td>Expo Push</td><td>Background notifications when the app is closed.</td></tr>
+    <tr><td>ngrok</td><td>Public HTTPS tunnel to the development machine.</td></tr>
+  </table>
+</section>
+</div>
+
+<!-- ======================= 6. DATA + API ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Data model</h2></div>
+
+  <table>
+    <tr><th style="width:24%">Table</th><th>Holds</th></tr>
+    <tr><td class="mono"><strong>users</strong></td><td>name, phone (unique), bcrypt password, push token, online flag, last position, timestamps</td></tr>
+    <tr><td class="mono"><strong>sos_sessions</strong></td><td>victim, live coordinates, message, photo URL + type + name, status, radius, share token, started/ended</td></tr>
+    <tr><td class="mono"><strong>sos_responders</strong></td><td>session, responder, status (alerted → responding → arrived, or declined), responded/arrived times — one row per pair, enforced by a unique index</td></tr>
+    <tr><td class="mono"><strong>emergency_contacts</strong></td><td>owner, name, phone — capped at five, unique per person</td></tr>
+    <tr><td class="mono"><strong>safety_timers</strong></td><td>owner, note, status, expiry, warned flag, and the SOS it raised if it expired</td></tr>
+  </table>
+
+  <div class="callout good">
+    <strong>Migrations run themselves</strong>
+    The schema is created and patched on boot — new columns are added only if missing, duplicate rows are cleaned before a unique index is applied, and indexes are created idempotently. An existing database upgrades in place with no manual step; this was verified against the real database holding 8 accounts and 40 sessions.
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>The API surface</h2></div>
+
+  <h4>Public</h4>
+  <table class="t-mono">
+    <tr><td><span class="verb g">GET</span> /</td><td>Health check with live counters</td></tr>
+    <tr><td><span class="verb g">GET</span> /config</td><td>Default message, radius, image limits, hotlines</td></tr>
+    <tr><td><span class="verb g">GET</span> /stats</td><td>Online count (excluding you) and active emergencies</td></tr>
+    <tr><td><span class="verb p">POST</span> /auth/register</td><td>Create an account</td></tr>
+    <tr><td><span class="verb p">POST</span> /auth/login</td><td>Sign in, receive a 30-day token</td></tr>
+    <tr><td><span class="verb g">GET</span> /t/:token</td><td>Public live-tracking page for one emergency</td></tr>
+    <tr><td><span class="verb g">GET</span> /t/:token/data</td><td>The live JSON that page polls</td></tr>
+    <tr><td><span class="verb g">GET</span> /uploads/:file</td><td>SOS photos</td></tr>
+  </table>
+
+  <h4>Authenticated — emergencies</h4>
+  <table class="t-mono">
+    <tr><td><span class="verb p">POST</span> /sos/trigger</td><td>Raise an SOS: location + message + photo</td></tr>
+    <tr><td><span class="verb g">GET</span> /sos/active</td><td>Your own running emergency, for restoring the live screen</td></tr>
+    <tr><td><span class="verb g">GET</span> /sos/incoming</td><td>Live alerts near you that still need someone</td></tr>
+    <tr><td><span class="verb g">GET</span> /sos/:id</td><td>Full details: victim, message, photo, responders</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/:id/image</td><td>Attach or replace the photo mid-emergency</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/:id/respond</td><td>Accept — “I'm on my way”</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/:id/arrived</td><td>Mark arrival</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/:id/withdraw</td><td>“I can't make it” — the victim is told</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/:id/end</td><td>All clear</td></tr>
+    <tr><td><span class="verb p">POST</span> /sos/mine/clear</td><td>Close anything stuck open</td></tr>
+  </table>
+
+  <h4>Authenticated — everything else</h4>
+  <table class="t-mono">
+    <tr><td><span class="verb g">GET</span> /nearby</td><td>Online users within range (no coordinates returned)</td></tr>
+    <tr><td><span class="verb g">GET</span> /nearby/help</td><td>Nearest police and hospitals + hotlines</td></tr>
+    <tr><td><span class="verb g">GET</span> /timer &nbsp;<span class="verb p">POST</span> /timer/start</td><td>Safety timer state; start one</td></tr>
+    <tr><td><span class="verb p">POST</span> /timer/checkin · /extend · /cancel</td><td>“I'm safe”, buy ten more minutes, or call it off</td></tr>
+    <tr><td><span class="verb g">GET</span> /contacts &nbsp;<span class="verb p">POST</span> &nbsp;<span class="verb d">DEL</span></td><td>Emergency contacts, max five</td></tr>
+    <tr><td><span class="verb g">GET</span> /history &nbsp;<span class="verb g">GET</span> /profile/stats</td><td>Past emergencies; counters</td></tr>
+    <tr><td><span class="verb g">GET</span> /user/me &nbsp;<span class="verb p">POST</span> /user/location · /push-token</td><td>Profile, position, device token</td></tr>
+  </table>
+</section>
+</div>
+
+<!-- ======================= 8. REALTIME ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>The real-time layer</h2></div>
+
+  <p>Fourteen events carry everything that must happen instantly. The server keeps a <code>userId → Set&lt;socketId&gt;</code> registry, so a person with two devices gets every event on both.</p>
+
+  <table>
+    <tr><th style="width:30%">Event</th><th style="width:22%">Direction</th><th>Meaning</th></tr>
+    <tr><td class="mono">authenticate</td><td>app → server</td><td>Bind this socket to a user</td></tr>
+    <tr><td class="mono">location_update</td><td>app → server</td><td>New GPS fix; relayed to responders if an SOS is live</td></tr>
+    <tr><td class="mono">responder_location_update</td><td>app → server</td><td>A responder's position, forwarded to the victim</td></tr>
+    <tr><td class="mono">sos_alert</td><td>server → nearby</td><td>Someone needs help: location, message, photo, distance</td></tr>
+    <tr><td class="mono">sos_image</td><td>server → responders</td><td>A photo was added or replaced mid-emergency</td></tr>
+    <tr><td class="mono">responder_coming</td><td>server → victim</td><td>Someone accepted</td></tr>
+    <tr><td class="mono">responder_location</td><td>server → victim</td><td>They moved; includes recomputed distance</td></tr>
+    <tr><td class="mono">responder_arrived</td><td>server → victim</td><td>They are here</td></tr>
+    <tr><td class="mono">responder_left</td><td>server → victim</td><td>They withdrew — stop counting on them</td></tr>
+    <tr><td class="mono">victim_location_update</td><td>server → responders</td><td>The victim moved</td></tr>
+    <tr><td class="mono">sos_ended</td><td>server → all</td><td>Resolved; stop tracking</td></tr>
+    <tr><td class="mono">sos_resume</td><td>server → client</td><td>You reconnected and your own SOS is still live</td></tr>
+    <tr><td class="mono">timer_warning</td><td>server → client</td><td>Your safety timer expires in two minutes</td></tr>
+    <tr><td class="mono">timer_expired</td><td>server → client</td><td>It expired; an SOS went out for you</td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Sockets are treated as unreliable by design</strong>
+    A backgrounded phone suspends its socket, and anything sent meanwhile is gone permanently. So every screen showing live state re-reads it from the server on reconnect and on every return to the foreground. The socket is an optimisation for speed; the database is the source of truth.
+  </div>
+</section>
+
+<!-- ======================= 9. DESIGN ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">09</span><h2>Interface design</h2></div>
+
+  <p class="kicker">The interface was rebuilt on a token system, because an emergency screen has to be readable at a glance, at night, at arm's length, by someone who is frightened.</p>
+
+  <div class="grid g2">
+    <div class="card"><h4>One source of truth</h4><p><code>theme.js</code> holds every colour, type style, spacing step and radius. <code>components/ui.jsx</code> holds the shared Card, Button, Pill, Stat, Field, Avatar and EmptyState. Screens compose; they do not restyle.</p></div>
+    <div class="card"><h4>Contrast, measured</h4><p>Body text sits at 18.9:1 against the near-black background, secondary at 7.4:1, and the faintest tier at 4.6:1 — the WCAG floor. The old palette failed this and was corrected.</p></div>
+    <div class="card"><h4>Never colour alone</h4><p>Every status pairs a colour with an icon and a word: “Arrived” green with a check, “On the way” amber with a walking figure. Colour-blind users lose nothing.</p></div>
+    <div class="card"><h4>Reachable targets</h4><p>Every interactive element is at least 48 dp with a visible pressed state, and motion respects the system reduce-motion setting.</p></div>
+  </div>
+
+  <table>
+    <tr><td style="width:26%"><strong>Palette</strong></td><td>Near-black <code>#09090B</code> ground; alert red <code>#EF4444</code> for emergency, green for safe, blue for you, amber for in-progress. Semantic, never decorative.</td></tr>
+    <tr><td><strong>Type</strong></td><td>Inter at four weights. Body never below 15 pt. Timers and distances use tabular figures so numbers do not shift as they count.</td></tr>
+    <tr><td><strong>Icons</strong></td><td>Ionicons throughout. Emoji were removed — they render differently on every platform and cannot be themed.</td></tr>
+    <tr><td><strong>Structure</strong></td><td>Two screens were merged into one and three files deleted. The fastest interface is the one with less in it.</td></tr>
+  </table>
+</section>
+</div>
+
+<!-- ======================= 10. DECISIONS ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">10</span><h2>Engineering decisions worth defending</h2></div>
+
+  <h3>A real map with no API key</h3>
+  <p>Google Maps requires a billing account and a key that leaks in a client build. Instead, Leaflet renders inside a WebView against OpenStreetMap raster tiles: a genuine, pannable, zoomable map with live markers and a route line — no key, no card, no quota. It works identically in Expo Go and in a standalone build, and falls back to plain coordinates when tiles cannot load.</p>
+
+  <h3>The safety timer runs on the server, not the phone</h3>
+  <p>A countdown in the app dies with the app. The deadline is a database row swept every fifteen seconds, so the SOS fires even if the phone is smashed, stolen or flat. This is the difference between a feature and a promise.</p>
+
+  <h3>Photos as files, not database rows</h3>
+  <p>The original approach stored base64 images directly in SQLite and pushed them through socket frames — a 400 KB photo becoming a 540 KB string sent to every recipient. Now the server decodes once, validates type and size, writes to disk and stores a short URL. The database stays small and the socket payload stays tiny.</p>
+
+  <h3>One code path for automatic and manual alerts</h3>
+  <p>The timer and the SOS button both call the same <code>raiseSOS()</code> function. An automatic alert is byte-for-byte identical to a pressed one — there is no second implementation to drift out of sync.</p>
+
+  <h3>The online count excludes you</h3>
+  <p>Standing alone and reading “1 online” is worse than useless. The figure is computed per viewer, both in the REST response and in the socket broadcast, so it always means <em>other people</em>.</p>
+
+  <h3>Location is never exposed casually</h3>
+  <p>The nearby-users endpoint returns names and distances but never coordinates. The public tracking page shows the emergency and nothing about the account — a test asserts the phone number cannot appear in that response. Sharing stops the instant the SOS ends.</p>
+
+  <h3>Third parties fail soft</h3>
+  <p>Overpass is a free community service that will be down when it is most needed. Lookups are cached for an hour on a one-kilometre grid, tried against two mirrors, and fall back to stale data and then to a hotline button that depends on nothing.</p>
+</section>
+
+<!-- ======================= 11. BUGS ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">11</span><h2>Defects found and fixed</h2></div>
+
+  <p class="kicker">Most were the same root cause wearing different clothes: the app trusted a one-shot event and never re-checked.</p>
+
+  <table>
+    <tr><th style="width:33%">Defect</th><th>Consequence and fix</th></tr>
+    <tr><td><strong>Reconnect unregistered the live socket</strong></td><td>A user's socket map was one-to-one, so a dying socket removed the fresh one and the user silently stopped receiving alerts. Now a set of sockets per user.</td></tr>
+    <tr><td><strong>Missed alerts were never replayed</strong></td><td>A push notification arrived, the app opened, and showed nothing — the socket event had fired while it was closed. Added a pending-alerts endpoint plus a replay on reconnect.</td></tr>
+    <tr><td><strong>“I've arrived” never reached the victim</strong></td><td>The database recorded it correctly, but the victim's backgrounded phone missed the event and froze on “On the way”. Both live screens now re-sync on foreground.</td></tr>
+    <tr><td><strong>“I can't make it” told nobody</strong></td><td>It only navigated away, leaving the victim expecting someone who was not coming. Added a withdraw endpoint and a notification.</td></tr>
+    <tr><td><strong>Back stranded you outside your own SOS</strong></td><td>One stray tap and there was no way back in. Back is now guarded, History rows are tappable, and returning to Home restores the live screen.</td></tr>
+    <tr><td><strong>A stuck SOS blocked all future ones</strong></td><td>“You already have an active SOS” with nothing visible anywhere. Added a clear action in Profile, a recovery dialog at trigger time, and a six-hour auto-resolve.</td></tr>
+    <tr><td><strong>Stale state survived a crash</strong></td><td>Online flags and abandoned sessions persisted across restarts. Both are cleaned at boot.</td></tr>
+    <tr><td><strong>Errors returned HTML</strong></td><td>An oversized upload produced an Express error page the app could not parse. All failures are JSON now.</td></tr>
+    <tr><td><strong>Distance froze mid-response</strong></td><td>A stale closure meant the responder's distance stopped updating when the victim moved.</td></tr>
+    <tr><td><strong>A patch upgrade broke the build</strong></td><td>Expo 54.0.37 ships a polyfill with an untranspiled class that the bundled Hermes compiler rejects, breaking every production build. Versions are pinned deliberately, with the reason recorded.</td></tr>
+  </table>
+</section>
+</div>
+
+<!-- ======================= 12. TESTING ======================= -->
+<div class="page">
+<section>
+  <div class="sec-head"><span class="sec-num">12</span><h2>Testing</h2></div>
+
+  <p class="kicker">140 automated checks run against a real server on a throwaway database with one command: <code>npm test</code>.</p>
+
+  <div class="grid g2">
+    <div class="card"><span class="tag">115 checks</span><h4>End-to-end suite</h4><p>Boots the server, registers real accounts, opens real sockets, and drives complete journeys — trigger, alert, respond, arrive, withdraw, resolve.</p></div>
+    <div class="card"><span class="tag">25 checks</span><h4>Contract suite</h4><p>Asserts that every field each screen reads actually exists in the server's response, so the interface and the API cannot drift apart unnoticed.</p></div>
+  </div>
+
+  <h4>What the suites prove</h4>
+  <table>
+    <tr><td style="width:30%"><strong>The radius is real</strong></td><td>A user 0.9 km away is alerted; one at 5.5 km is not; you are never alerted to your own emergency.</td></tr>
+    <tr><td><strong>Photos survive the round trip</strong></td><td>Stored as a file, downloadable over HTTP, replaceable mid-emergency, and still present in history afterwards.</td></tr>
+    <tr><td><strong>Missed alerts are recoverable</strong></td><td>A responder is disconnected before an SOS fires, then reconnects and receives it both by REST and by socket replay.</td></tr>
+    <tr><td><strong>The timer genuinely fires</strong></td><td>The suite backdates a deadline, waits for the real sweep, and confirms a full SOS appeared and reached a nearby responder's socket.</td></tr>
+    <tr><td><strong>Nothing leaks</strong></td><td>Access control on every route; the tracking page cannot expose an account.</td></tr>
+    <tr><td><strong>Bad input is handled</strong></td><td>Oversized images, non-image data, malformed coordinates, invalid tokens, duplicate accounts — all rejected as JSON with the right status.</td></tr>
+  </table>
+
+  <div class="callout good">
+    <strong>Tests that earned their keep</strong>
+    Two failures during development were genuine test bugs rather than product bugs — a socket the suite had deliberately disconnected, and a variable declared twice. Both were investigated rather than silenced, which is exactly what a suite is for. Every fix in Section 11 was locked in with a regression check before moving on.
+  </div>
+</section>
+
+<!-- ======================= 13. RUNNING IT ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">13</span><h2>Running the system</h2></div>
+
+  <p>One command starts everything — database, backend, public tunnel and the app:</p>
+  <table class="t-mono">
+    <tr><td style="width:32%">.\start.ps1</td><td>Clears ports, installs anything missing, starts the backend (which opens the database), raises the ngrok tunnel, launches Expo — verifying each responded before continuing</td></tr>
+    <tr><td>.\start.ps1 -Stop</td><td>Shuts all of it down</td></tr>
+    <tr><td>.\start.ps1 -NoTunnel</td><td>Same-WiFi testing without ngrok</td></tr>
+    <tr><td>npm test</td><td>All 140 checks, from <code>server/</code></td></tr>
+    <tr><td>node reset-password.js</td><td>List accounts, or set a password</td></tr>
+  </table>
+
+  <p>The script also warns if the tunnel URL stops matching the one compiled into the app — historically the single most common cause of “the app cannot connect”.</p>
+</section>
+
+<!-- ======================= 14. NEXT ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">14</span><h2>What comes next</h2></div>
+  <table>
+    <tr><td style="width:30%"><strong>Cloud deployment</strong></td><td>Move off the laptop to a small VPS with a domain and a certificate, replacing the ngrok tunnel.</td></tr>
+    <tr><td><strong>Push on iOS</strong></td><td>Android delivery works today; iOS needs an Apple Developer account for APNs.</td></tr>
+    <tr><td><strong>Turn-by-turn inside the app</strong></td><td>Currently hands off to the phone's maps app; OSRM could route in-app for free.</td></tr>
+    <tr><td><strong>Verified responders</strong></td><td>Optional identity checks, so a victim knows who is arriving.</td></tr>
+    <tr><td><strong>Abuse prevention</strong></td><td>Rate limiting and false-alarm handling before any public deployment.</td></tr>
+  </table>
+</section>
+
+<!-- ======================= 15. NUMBERS ======================= -->
+<section>
+  <div class="sec-head"><span class="sec-num">15</span><h2>The project in numbers</h2></div>
+  <table>
+    <tr><td style="width:34%">Application code</td><td><strong>4,081 lines</strong> — 9 screens, 7 shared components, 6 service modules</td></tr>
+    <tr><td>Server code</td><td><strong>2,168 lines</strong> across 8 modules, plus 3 test files</td></tr>
+    <tr><td>REST endpoints</td><td><strong>32</strong></td></tr>
+    <tr><td>Real-time events</td><td><strong>14</strong></td></tr>
+    <tr><td>Database tables</td><td><strong>5</strong>, plus photo files on disk</td></tr>
+    <tr><td>Automated checks</td><td><strong>140</strong>, all passing</td></tr>
+    <tr><td>Paid services</td><td><strong>None.</strong> No maps key, no SMS gateway, no cloud bill</td></tr>
+    <tr><td>Alert radius / delivery</td><td><strong>2 km</strong> · under <strong>100 ms</strong> to a connected device</td></tr>
+  </table>
+
+  <div class="callout info">
+    <strong>If there is one thing to take away</strong>
+    The hard part of an emergency application is not sending the alert. It is guaranteeing that the alert still arrives when the phone is asleep, the socket is dead, the network is poor, nobody is nearby, or the battery is gone — and that the person who needs help can always find their way back to the screen that matters.
+  </div>
+
+  <div class="foot-note">
+    RESQORA — community emergency response. Built with React Native, Node.js, Socket.IO, SQLite and OpenStreetMap.
+    Map data © OpenStreetMap contributors.
+  </div>
+</section>
+</div>
+
+</body>
+</html>

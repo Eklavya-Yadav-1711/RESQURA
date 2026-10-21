@@ -1,0 +1,41 @@
+# Dependencies and generated tooling
+**/node_modules/
+**/.expo/
+**/dist/
+**/web-build/
+supabase/.temp/
+**/.gradle/
+**/.cxx/
+**/build/
+**/Pods/
+
+# Local secrets and credentials
+**/.env
+**/.env.*
+!**/.env.example
+**/*.jks
+**/*.keystore
+**/*.p8
+**/*.p12
+**/*.key
+**/*.mobileprovision
+
+# Local databases and uploaded media
+**/*.db
+**/*.db-shm
+**/*.db-wal
+server/uploads/
+
+# Logs and temporary files
+**/*.log
+**/npm-debug.*
+**/yarn-debug.*
+**/yarn-error.*
+**/.DS_Store
+**/*.orig.*
+
+# Build artifacts
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.zip

@@ -1,0 +1,609 @@
+================================================================================
+                         RESQORA — PROJECT DOCUMENTATION
+                         Complete Q&A Reference Guide
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — WHAT IS THIS APP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What is RESQORA?
+A: RESQORA is a community emergency response mobile application. It connects
+   people in distress with nearby verified users who can physically come and
+   help them in real time. Think of it as a hyperlocal SOS network — when
+   someone triggers an emergency alert, every registered user within 2 km
+   receives an instant notification with the victim's live GPS location, a
+   default help message and an optional photo of the scene, and can respond
+   by physically going to help.
+
+Q: What problem does RESQORA solve?
+A: In emergency situations — accidents, medical emergencies, threats — calling
+   the police or ambulance takes time. RESQORA bridges that gap by alerting
+   the closest people who are already nearby and can arrive within minutes,
+   often before official help does. It turns regular community members into
+   first responders.
+
+Q: Who is this app for?
+A: Anyone who wants an extra layer of safety in their community. A person
+   walking alone at night, someone having a medical emergency, or anyone in
+   a dangerous situation can trigger the SOS. Other registered users nearby
+   receive the alert and can choose to respond.
+
+Q: What is the core concept?
+A: Community-based emergency response. No middlemen. No call centers. Direct
+   peer-to-peer emergency alerts using real-time GPS and instant socket
+   connections. When seconds matter, your neighbors become your first responders.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — TECH STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What is the frontend built with?
+A: The frontend is a React Native mobile app built using Expo SDK 54. It uses
+   Expo Router v6 for file-based navigation (similar to Next.js but for mobile).
+   The interface is built from React Native's own components on top of a small
+   in-house design system: theme.js holds the tokens (colour, type scale,
+   spacing, radii) and components/ui.jsx holds the shared Card, Button, Pill,
+   Stat, Field, Avatar and EmptyState. Icons come from @expo/vector-icons
+   (Ionicons) and the typeface is Inter. The only rendered third-party UI is
+   the Leaflet map inside a WebView.
+
+Q: What is the backend built with?
+A: The backend is a Node.js server using Express.js as the web framework.
+   Socket.io handles all real-time communication (SOS alerts, live location
+   updates, responder tracking). The database is SQLite, accessed using
+   Node.js's built-in experimental node:sqlite module (DatabaseSync).
+
+Q: What database is used?
+A: SQLite — a lightweight, file-based relational database. The database file
+   is stored locally at /server/database.db. It has three tables:
+   - users: stores all registered user accounts
+   - sos_sessions: stores every SOS emergency event
+   - sos_responders: stores who responded to each SOS
+
+Q: What are the main packages/libraries used?
+
+   FRONTEND (app/):
+   - expo ~54.0.0              — Core Expo framework
+   - expo-router ~6.0.23       — File-based navigation
+   - expo-location ~19.0.8     — GPS location tracking
+   - expo-av ~16.0.8           — Audio playback (alert sound)
+   - expo-image-picker ~17.0.11 — Camera + gallery for the SOS photo
+   - react-native-webview      — Hosts the Leaflet/OpenStreetMap map
+   - expo-notifications        — Background SOS alerts (needs an EAS build)
+   - expo-device               — Detects real hardware before asking for push
+   - expo-font + @expo-google-fonts/inter — Inter type family
+   - @expo/vector-icons        — Ionicons (no emoji used as icons)
+   - expo-linear-gradient       — Gradient UI elements
+   - socket.io-client ^4.7.2   — Real-time socket connection to backend
+   - react-native-safe-area-context — Safe area handling for notches
+   - @react-native-async-storage  — Storing auth token locally on device
+   - react 19.1.0              — Core React
+   - react-native 0.81.5       — Core React Native
+
+   BACKEND (server/):
+   - express                   — Web server framework
+   - socket.io                 — Real-time bidirectional communication
+   - bcryptjs                  — Password hashing
+   - jsonwebtoken              — JWT authentication tokens
+   - cors                      — Cross-Origin Resource Sharing
+   - node:sqlite (built-in)    — SQLite database access
+   - node:fs (built-in)        — Writing SOS photos to server/uploads/
+
+Q: What language is used throughout?
+A: JavaScript everywhere. No TypeScript. The frontend uses JSX (.jsx files)
+   and the backend uses plain Node.js (.js files).
+
+Q: How does authentication work?
+A: JWT (JSON Web Tokens). When a user registers or logs in, the server
+   generates a signed JWT token with a 30-day expiry. This token is stored
+   on the device using AsyncStorage. Every API request sends this token in
+   the Authorization header. The server verifies it using the authMiddleware
+   before processing any protected request.
+
+Q: How does real-time communication work?
+A: Socket.io. When a user opens the app, a WebSocket connection is established
+   to the backend. The user sends an "authenticate" event with their userId.
+   The server maps userId to their socket ID. When an SOS is triggered, the
+   server finds all users within range, looks up their socket IDs, and emits
+   a "sos_alert" event directly to each of their sockets instantly.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — APP STRUCTURE & SCREENS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What screens does the app have?
+A: The app has 8 screens organized into two groups:
+
+   AUTH SCREENS (not logged in):
+   1. Login          — Phone number + password sign in
+   2. Register       — Create new account (name, phone, password)
+
+   MAIN APP (logged in) — Bottom Tab Navigation:
+   3. Home Tab       — Main dashboard with SOS button, nearby users, live stats
+   4. History Tab    — Full record of all past SOS events for the account
+   5. Profile Tab    — User details, stats (SOS sent, times helped), logout
+
+   SOS FLOW SCREENS (stack on top of tabs):
+   6. SOS Trigger    — Hold 3 seconds to arm, then a 5-second cancel window,
+                       plus the photo attachment. One screen, three states —
+                       the old separate Confirm screen was folded into it so an
+                       emergency never costs an extra navigation.
+   7. SOS Active     — Live map of you and everyone coming, elapsed timer,
+                       what is being shared, add/replace photo, end SOS
+   8. SOS Ended      — Confirmation that sharing has stopped
+
+   RESPONDER FLOW:
+   9. Responder Nav  — Screen for the person coming to help: live map with the
+                       route line and distance, the message, the photo, a link
+                       out to turn-by-turn directions, and mark as arrived
+
+Q: How is navigation structured?
+A: Stack navigator at the root (handles all screen transitions). Inside it,
+   a Tab navigator handles the three main tabs (Home, History, Profile).
+   The SOS flow screens are pushed onto the Stack on top of the tabs.
+   Authentication is handled by an AuthGate component that runs on startup
+   and redirects to login if no token is found.
+
+Q: What does the Home tab show?
+A: - Greeting with user's name
+   - Status strip showing "PROTECTED" with green dot
+   - Three live metrics: Nearby responders, Online users, Range (2km)
+   - Large SOS button with pulse animation (tap to start SOS flow)
+   - List of nearby responders currently online
+   - Incoming SOS alert banner (slides up from bottom when someone nearby
+     triggers SOS — includes victim name, distance, message, the shared
+     photo if one was attached, and a respond button)
+
+Q: What does the History tab show?
+A: A timeline of every SOS emergency the logged-in user has ever triggered.
+   Grouped by date. Each entry shows:
+   - Status (Resolved / Active) with color-coded left border
+   - Time it was triggered
+   - Duration of the emergency
+   - Message sent
+   - The photo shared with that alert, if any
+   - List of users who actually responded (name + arrived/responding status)
+   History cannot be deleted by the user — it is permanent.
+
+Q: What does the Profile tab show?
+A: - User's initials in a large avatar circle
+   - Full name and phone number
+   - Two key stats: Total SOS sent, Total times helped others
+   - Member since date
+   - Alert range (2 km)
+   - Network connection status
+   - Privacy notice about GPS data
+   - Sign Out button
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — HOW THE SOS SYSTEM WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: How does triggering an SOS work step by step?
+A: 1. User taps the SOS button on the Home tab
+   2. SOS Trigger screen opens — user must HOLD the button for 3 full seconds
+      (prevents accidental triggers)
+   3. The same screen switches to a 5-second countdown — user can still
+      cancel, and can attach ONE photo here (camera or gallery); opening the
+      picker pauses the countdown
+   4. After countdown, the app fetches the user's current GPS coordinates
+   5. A POST request goes to /sos/trigger with lat, lon, message, range and
+      the optional image as a base64 data URI
+   6. Server saves the photo to server/uploads/ and keeps only its URL
+   7. Server finds all users within 2 km using Haversine distance formula
+   8. Server emits "sos_alert" (location + message + image URL + distance)
+      to each nearby user's socket, and sends an Expo push notification to
+      in-range users who have no live socket
+   9. Server also stores the SOS in the sos_sessions database table
+   10. The victim's screen switches to SOS Active — live responders, what is
+       being shared, and a button to add or replace the photo
+   11. When resolved, victim presses End SOS — server marks it resolved
+   12. SOS Ended screen confirms the emergency is over
+
+Q: How does receiving an SOS alert work?
+A: When a nearby user's phone receives the "sos_alert" socket event:
+   1. The phone vibrates (pattern: 500ms-200ms-500ms-200ms-500ms)
+   2. An alert sound plays (custom generated WAV beep via expo-av)
+   3. A red banner slides up from the bottom of the screen showing:
+      - "SOMEONE NEEDS HELP NEARBY"
+      - Victim's name and distance
+      - Their emergency message
+      - The photo they shared, if any
+      - A large "I'M ON MY WAY" button
+   4. Tapping the button opens Responder Nav screen
+
+Q: How does the responder navigation work?
+A: The Responder Nav screen shows:
+   - An animated map mockup showing victim location and responder moving
+   - Real-time distance to victim (updates as responder moves)
+   - Victim's GPS coordinates
+   - "ARRIVED — MARK AS REACHED" button
+   The responder's location is continuously sent to the server via socket,
+   which relays it to the victim's screen in real time. The victim can see
+   how far away the responder is and whether they are coming or have arrived.
+
+Q: What happens if nobody is within 2 km when I raise an SOS?
+A: Two things still reach people. First, your emergency contacts (up to 5,
+   saved in Profile) get a prefilled text message with your live location -
+   the app opens your own messaging app, so there is no SMS gateway and no
+   cost. Second, every SOS carries a public tracking link that anyone can
+   open in a browser without the app.
+
+Q: What is the tracking link?
+A: A page at /t/<token> with an unguessable token, created fresh for each SOS.
+   It shows a live OpenStreetMap map of the person's position, their message
+   and their photo, refreshing every five seconds. It needs no app, no login
+   and no account, so family on any phone can follow along. When the SOS ends
+   the page says so and stops updating. Nothing about the account - not the
+   phone number, not the contact list - is exposed on that page.
+
+Q: What is the safety timer?
+A: A way to be protected BEFORE anything goes wrong. You tell RESQORA "expect
+   me in 20 minutes" with an optional note like "walking home from the
+   library". If you check in before it runs out, nothing happens. If you do
+   not, the server raises a full SOS on your behalf - same 2 km radius, same
+   responders, same push notifications - using your last known position and a
+   message explaining that you missed your check-in.
+
+Q: Why does the safety timer run on the server instead of the phone?
+A: Because the phone is the thing that might be taken, smashed or out of
+   battery. A countdown running in the app would die with it. The deadline is
+   a row in the safety_timers table, and a sweep every 15 seconds fires any
+   that have passed - so the alert goes out even if the app never runs again.
+   Two minutes before the deadline you get a warning nudge, and you can extend
+   by ten minutes or check in at any point.
+
+Q: How is location sharing handled for privacy?
+A: GPS location is ONLY shared during an active SOS emergency. Once the SOS
+   is ended (by the victim pressing End SOS), all location sharing stops
+   immediately. Location data is not permanently stored — only the coordinates
+   at the time of SOS trigger are saved for the session record. No background
+   location tracking happens outside of emergencies.
+
+Q: What is the 2 km range?
+A: When an SOS is triggered, only users within 2 kilometers of the victim
+   receive the alert. This is calculated using the Haversine formula which
+   computes the great-circle distance between two GPS coordinates on Earth.
+   The default is 2 km — a sensible walking/running distance — and it lives
+   server-side (DEFAULT_SOS_RANGE_KM) so every client agrees on it. A request
+   may ask for a different radius, capped at 10 km.
+
+Q: What exactly gets shared with the people nearby?
+A: Three things, in one alert:
+   1. LOCATION — the victim's live GPS coordinates, which keep updating for
+      as long as the SOS is active.
+   2. MESSAGE — "I am here. Please come and help me." The server applies
+      this default whenever the app sends no message of its own.
+   3. IMAGE — one optional photo, taken with the camera or picked from the
+      gallery. It can be attached before sending, or added/replaced while the
+      SOS is still running, in which case responders receive it live via the
+      "sos_image" socket event.
+
+Q: How are the photos stored?
+A: The app sends the photo as a base64 data URI. The server decodes it,
+   validates the type (jpeg/png/webp/heic/gif) and the size (5 MB max),
+   writes the file into server/uploads/ and stores only the URL in SQLite.
+   Alerts, history and the responder screen all reference that URL, so a
+   large photo never travels through the database or sits inside a socket
+   payload. Files are served from GET /uploads/:filename.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — BACKEND API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What API endpoints does the backend expose?
+
+   PUBLIC (no auth required):
+   GET  /              — Health check, confirms server is running
+   POST /auth/register — Create new account (name, phone, password)
+   POST /auth/login    — Login and receive JWT token
+
+   PUBLIC (continued):
+   GET  /config             — Default message, default 2 km radius, image limits
+   GET  /stats              — Online user count + active SOS count
+   GET  /uploads/:file      — SOS photo files
+
+   PROTECTED (requires Bearer token in Authorization header):
+   GET  /user/me            — Get logged-in user's profile
+   POST /user/push-token    — Save device push notification token
+   POST /user/location      — Update location over REST (socket-free fallback)
+   GET  /nearby             — Get users within range (lat, lon, range params)
+   POST /sos/trigger        — Trigger an SOS (location + message + image)
+   GET  /sos/active         — Check if user has an active SOS
+   GET  /sos/:id            — Full SOS details: victim, message, photo, responders
+   POST /sos/:id/image      — Attach or replace the photo on a live SOS
+   POST /sos/:id/respond    — Responder accepts an SOS
+   POST /sos/:id/arrived    — Responder marks themselves as arrived
+   POST /sos/:id/end        — Victim ends the SOS emergency
+   GET  /history            — Full SOS history with photos and responders
+   GET  /profile/stats      — Stats: SOS sent count, times helped, member since
+
+Q: What Socket.io events does the server handle?
+
+   CLIENT → SERVER:
+   authenticate         — Register user's identity on their socket connection
+   location_update      — Victim sends their live GPS coordinates
+   responder_location_update — Responder sends their GPS to server for victim
+
+   SERVER → CLIENT:
+   sos_alert            — New SOS nearby: location + message + image URL
+   sos_image            — Photo attached or replaced during an active SOS
+   sos_resume           — You reconnected while your own SOS is still active
+   authenticated        — Confirms socket authentication succeeded
+   online_count         — Current number of online users (broadcast on change)
+   responder_coming     — Tells victim a responder is on their way
+   responder_arrived    — Tells victim a responder has physically arrived
+   responder_location   — Live responder GPS sent to victim
+   victim_location_update — Live victim GPS sent to responder
+   sos_ended            — Tells all responders the emergency is over
+   sos_started          — Broadcast when any new SOS begins
+   sos_updated          — Broadcast when responder list changes
+
+   Every server→client event is delivered to ALL devices a user has
+   connected, so a second phone or a reconnecting app never misses an alert.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — CURRENT STATUS & HOSTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: Is the app live / deployed?
+A: No. Currently the app runs entirely on a local network. The backend server
+   runs on a Windows laptop (Node.js process on port 3000). The mobile app
+   connects to the laptop's local IP address (e.g., 192.168.1.43:3000).
+   This means all testing devices must be on the same WiFi network as the
+   laptop for the app to function.
+
+Q: How do you start the app for testing currently?
+A: Run the startup script from the project root:
+      .\start.ps1   (in PowerShell)
+   This automatically detects the current IP, updates the app, and starts
+   the backend. Then in a second terminal run:
+      npx expo start
+   Scan the QR code with Expo Go app on the phone.
+
+Q: What is Expo Go?
+A: Expo Go is a free app available on the App Store and Google Play. It allows
+   running Expo/React Native apps directly on a real device without building
+   a full APK or IPA. It is used for development and testing only. The final
+   production app would be a standalone build.
+
+Q: What are the limitations of the current local setup?
+A: - All devices must be on the same WiFi network as the laptop
+   - If the laptop's IP changes (switching networks), api.js must be updated
+   - The backend stops when the laptop is closed or the terminal is closed
+   - Push notifications (when app is in background) don't work in Expo Go
+   - Performance depends on local WiFi quality
+   - No HTTPS — only HTTP (fine for local testing, required for production)
+
+Q: What would be needed to deploy this properly?
+A: - A cloud server (AWS EC2, DigitalOcean, Railway, Render, etc.)
+   - A domain name with HTTPS/SSL certificate
+   - The SERVER_URL in api.js updated to the server's public URL
+   - A production Expo build (EAS Build) instead of Expo Go
+   - Environment variables for JWT secret and database path
+   - A process manager like PM2 to keep the server running
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — WHAT HAS BEEN BUILT (FEATURE COMPLETE LIST)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What features are fully working right now?
+
+   AUTHENTICATION:
+   ✓ User registration (name, phone number, password)
+   ✓ User login with JWT token
+   ✓ Secure password hashing with bcrypt
+   ✓ Token stored on device, auto-login on app reopen
+   ✓ Logout clears token and disconnects socket
+
+   LOCATION:
+   ✓ Real-time GPS location tracking
+   ✓ Location sent to server continuously via socket
+   ✓ Location updates shared during active SOS
+   ✓ GPS stops sharing when SOS ends
+
+   SOS SYSTEM:
+   ✓ 3-second hold mechanism to prevent accidental triggers
+   ✓ 5-second cancel countdown before SOS is sent
+   ✓ Default help message applied server-side to every alert
+   ✓ One photo per SOS — camera or gallery, before or during the emergency
+   ✓ Photo stored on disk and served over HTTP, never base64 in the database
+   ✓ Photo can be added or swapped mid-emergency and reaches responders live
+   ✓ Haversine distance calculation for 2km range detection
+   ✓ Instant real-time alert to all users within range via Socket.io
+   ✓ Live responder tracking on victim's screen
+   ✓ Live victim location updates on responder's screen
+   ✓ Multiple responders can respond to one SOS simultaneously
+   ✓ Responder status tracking (alerted → responding → arrived)
+   ✓ SOS ended by victim, all responders notified instantly
+   ✓ Stuck SOS detection and manual resolution
+
+   ALERTS (receiving an SOS):
+   ✓ Phone vibration pattern on incoming SOS
+   ✓ Audio alert sound (custom generated WAV beep)
+   ✓ Animated bottom sheet banner showing victim details
+   ✓ One-tap to start responding
+   ✓ Dismiss option if user cannot help
+
+   HISTORY:
+   ✓ All SOS events permanently stored in database
+   ✓ History cannot be deleted by users
+   ✓ Shows date, time, duration for each event
+   ✓ Shows which users responded and their final status
+   ✓ Grouped by date in timeline format
+   ✓ Pull-to-refresh
+
+   PROFILE:
+   ✓ User details (name, phone)
+   ✓ Total SOS sent count
+   ✓ Total times helped others count
+   ✓ Member since date
+   ✓ Secure logout
+
+   MAP:
+   ✓ Real OpenStreetMap map on the victim and responder screens
+   ✓ Leaflet inside a WebView — no Google API key, no billing account
+   ✓ Live markers for the victim, you and every responder
+   ✓ Dashed route line with the live distance between responder and victim
+   ✓ Auto-fits to keep everyone in frame; tap to open a full-screen map
+   ✓ Falls back to plain coordinates if the tiles cannot load
+
+   UI / UX:
+   ✓ Dark theme throughout (near-black #09090B) with WCAG-checked contrast
+   ✓ Design tokens in theme.js — one source of truth for colour and type
+   ✓ Shared component kit so cards, pills and buttons never drift apart
+   ✓ Inter type family with tabular figures for timers and distances
+   ✓ Ionicons everywhere — no emoji standing in for an icon
+   ✓ Every tap target at least 48dp, with pressed states on all of them
+   ✓ Status is never colour alone — always colour plus an icon and a word
+   ✓ Honours the system reduce-motion setting
+   ✓ Bottom tab navigation (Home, History, Profile)
+   ✓ Animated SOS button with a pulse halo
+   ✓ Smooth screen transitions (no animation flicker)
+   ✓ Works on both Android and iOS
+   ✓ Safe area handling for notches and home bars
+   ✓ Responsive to different screen sizes
+
+   BACKEND:
+   ✓ REST API with 12 endpoints
+   ✓ 8 Socket.io real-time events
+   ✓ JWT authentication middleware
+   ✓ Online user count tracking (in-memory map)
+   ✓ Automatic startup script with IP auto-detection
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — HOW IT WAS BUILT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: How was the project structured from the beginning?
+A: The project has two folders side by side:
+   /server  — the Node.js backend
+   /app     — the Expo React Native frontend
+   Both run independently. The app communicates with the server over HTTP
+   (REST API) and WebSocket (Socket.io).
+
+Q: How was the database designed?
+A: Three tables:
+   users          — id, name, phone (unique), password (hashed), push_token,
+                    is_online, latitude, longitude, last_seen, created_at
+   sos_sessions   — id, victim_id, victim_lat, victim_lon, message,
+                    image_url, image_mime_type, image_name, status,
+                    range_km, started_at, ended_at
+   sos_responders — id, sos_id, responder_id, status, responded_at,
+                    arrived_at (unique per sos_id + responder_id)
+   emergency_contacts — id, user_id, name, phone (max 5, unique per user)
+   safety_timers  — id, user_id, note, status, started_at, expires_at,
+                    warned, triggered_sos_id
+
+   Photos are files on disk under server/uploads/ — the table holds only the
+   URL that points at them.
+
+Q: How was the real-time location sharing built?
+A: Two parallel systems:
+   1. Victim's location: Sent via socket "location_update" event every time
+      the phone moves more than 15 meters. Server stores it in the users table
+      and also updates the sos_sessions table if SOS is active. Server then
+      forwards it to all active responders.
+   2. Responder's location: Sent via socket "responder_location_update" event.
+      Server looks up the SOS, finds the victim's socket, and sends the
+      responder's coordinates directly to the victim.
+
+Q: How was the UI/UX designed?
+A: Custom design with no UI kit. All components are built from scratch using
+   React Native's View, Text, TouchableOpacity, Animated, and LinearGradient.
+   The design philosophy: infographic style — data is the hero, large bold
+   numbers, minimal chrome, purposeful use of color (red for emergency,
+   green for safe), dark near-black background throughout.
+
+Q: What was the biggest technical challenge?
+A: Navigation state management with expo-router. Moving from a flat screen
+   structure to a tab-based structure while maintaining proper navigation
+   for the SOS flow (push → push → replace → replace) required careful
+   handling. The key insight was using router.replace('/(tabs)') to explicitly
+   target the tab group rather than '/' which expo-router resolved ambiguously.
+   iOS also cached old navigation state, causing black screens, fixed by
+   making the AuthGate redirect logged-in users who land on wrong routes.
+
+Q: Were there any bugs that were hard to fix?
+A: Several notable ones:
+   - Port 8081 conflict: Previous Expo processes not killed before restart
+   - expo-notifications error: Removed entirely as it doesn't work in Expo Go
+   - Stuck SOS: A session left in "active" state, blocking new alerts
+   - Online count not updating: Fixed with a /stats REST endpoint fetched
+     on load instead of relying only on socket events
+   - History endpoint crash: db variable not imported in server/index.js
+   - iOS black screen: Expo Go restoring old cached route /home which became
+     a dead-end after refactoring
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — QUICK NUMBERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: How big is the project?
+A: Frontend screens:     9 screens / routes + a public tracking web page
+   Frontend components:  In-house design system (theme.js + components/ui.jsx)
+   Backend endpoints:    19 REST API endpoints
+   Socket.io events:     13 real-time events (client+server)
+   Database tables:      3 tables + photo files on disk
+   Backend files:        5 files (index.js, auth.js, database.js,
+                         storage.js, push.js)
+   Frontend services:    1 file (api.js) — all API + socket logic
+
+Q: What is the alert range?
+A: 2 kilometers radius from the victim's GPS position (server default,
+   overridable per request up to 10 km)
+
+Q: How fast are alerts delivered?
+A: Effectively instant — Socket.io WebSocket push with no polling.
+   Typical delivery: under 100ms on local network.
+
+Q: How long does a JWT token last?
+A: 30 days. Users stay logged in automatically for 30 days.
+
+Q: What platforms does it support?
+A: Android and iOS. Tested on real devices using Expo Go.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 10 — WHAT IS NEXT / NOT YET DONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: What features are not built yet?
+A: - Receiving background push notifications. Everything is wired — the server
+     sends them and the app registers for a token — but Android delivery needs
+     Firebase credentials (google-services.json + an FCM V1 key uploaded to
+     Expo) and an EAS build. Expo Go cannot receive remote push at all.
+   - Turn-by-turn routing inside the app (today it opens the phone's map app)
+   - Custom SOS message typed by the user (the default message is sent today)
+   - More than one photo per SOS (exactly one is supported)
+   - User profile photo
+   - SOS categories (medical, threat, accident, etc.)
+   - Admin dashboard to monitor all active SOS events
+   - Cloud deployment (currently local only)
+   - HTTPS (currently HTTP)
+   - Rate limiting and abuse prevention
+   - Offline mode handling
+
+Q: What would it take to go to production?
+A: 1. Deploy backend to a cloud server with a public IP/domain
+   2. Add HTTPS with SSL certificate
+   3. Build the app with EAS Build (not Expo Go) for push notifications
+   4. Add a real map (Google Maps API key needed)
+   5. Set up proper environment variables and secrets management
+   6. Add error monitoring (Sentry or similar)
+   7. Performance testing with multiple concurrent users
+
+================================================================================
+                    Document prepared: May 2026
+                    Status: Active Development — Local Testing Phase
+================================================================================
