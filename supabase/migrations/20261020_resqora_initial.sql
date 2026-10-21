@@ -103,8 +103,8 @@ values (
   'sos-media',
   'sos-media',
   false,
-  5242880,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif']
+  20971520,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'video/mp4', 'video/quicktime', 'video/3gpp']
 )
 on conflict (id) do update set
   public = excluded.public,

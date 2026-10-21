@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Image, Pressable, Modal, ActivityIndicator, Dimensions,
+  View, Text, StyleSheet, Image, Pressable, Modal, ActivityIndicator, Dimensions, Linking,
 } from 'react-native';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Space, Radius, Type, HIT } from '../theme';
@@ -11,6 +12,9 @@ import { Colors, Space, Radius, Type, HIT } from '../theme';
  * an emergency scene is rarely enough to act on.
  */
 export default function Photo({ source, style, height = 160, caption, accessibilityLabel }) {
+  if (source?.mediaType === 'video') {
+    return <VideoMedia source={source} style={style} height={height} caption={caption} accessibilityLabel={accessibilityLabel} />;
+  }
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -91,6 +95,29 @@ export default function Photo({ source, style, height = 160, caption, accessibil
   );
 }
 
+function VideoMedia({ source, style, height, caption, accessibilityLabel }) {
+  const player = useVideoPlayer({ uri: source.uri, headers: source.headers }, (instance) => {
+    instance.loop = false;
+  });
+  return (
+    <View style={[styles.videoWrap, { height }, style]}>
+      <VideoView
+        player={player}
+        style={styles.video}
+        nativeControls
+        contentFit="contain"
+        accessibilityLabel={accessibilityLabel || 'Video shared with this alert'}
+      />
+      <View style={styles.videoBar}>
+        {caption ? <Text style={styles.caption}>{caption}</Text> : <View />}
+        <Pressable onPress={() => Linking.openURL(source.uri)} accessibilityRole="button">
+          <Text style={styles.download}>Download video</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 const { width, height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
@@ -128,4 +155,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
   full: { flex: 1, width: width, maxHeight: screenHeight },
+  videoWrap: {
+    width: '100%', borderRadius: Radius.md, overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  video: { flex: 1, width: '100%' },
+  videoBar: {
+    minHeight: 38, paddingHorizontal: Space.md, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.elevated,
+  },
+  download: { ...Type.caption, color: Colors.danger },
 });

@@ -14,6 +14,8 @@ const publicApiUrl = (req: Request) => {
   const url = new URL(req.url);
   return `https://${url.host}/functions/v1/api`;
 };
+const mediaType = (mime: string | null | undefined) => String(mime || '').toLowerCase().startsWith('video/') ? 'video' : 'image';
+const mediaExtension = (mime: string) => mime === 'video/quicktime' ? 'mov' : mime === 'video/3gpp' ? '3gp' : mime.split('/')[1] || 'bin';
 const publicViewerUrl = (token: string) =>
   `https://eklavya-yadav-1711.github.io/RESQURA/?token=${encodeURIComponent(token)}`;
 const issue = (id: number) => new SignJWT({ userId: id }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d').sign(secret);
@@ -63,12 +65,12 @@ Deno.serve(async (req) => {
   const p = route(req);
   try {
     const input = req.method === 'GET' ? Object.fromEntries(new URL(req.url).searchParams) : await readBody(req);
-    if (p === '/config' || p.endsWith('/config')) return json({ defaultMessage: 'I am here. Please come and help me.', defaultRangeKm: 2, maxRangeKm: 10, maxMessageLength: 300, maxImageBytes: 5242880, imageEnabled: true, hotlines: { police: '112', ambulance: '108' } });
+    if (p === '/config' || p.endsWith('/config')) return json({ defaultMessage: 'I am here. Please come and help me.', defaultRangeKm: 2, maxRangeKm: 10, maxMessageLength: 300, maxImageBytes: 5242880, maxVideoBytes: 20971520, maxVideoSeconds: 30, imageEnabled: true, videoEnabled: true, hotlines: { police: '112', ambulance: '108' } });
     const trackingMatch = p.match(/^\/t\/([^/]+)(\/data)?$/);
     if (trackingMatch) {
       const token = trackingMatch[1];
       const { data: tracked } = await db.from('sos_sessions')
-        .select('id,status,victim_lat,victim_lon,message,image_url,started_at,users!sos_sessions_victim_id_fkey(name),sos_responders(id,status,responder_id,users!sos_responders_responder_id_fkey(id,name,latitude,longitude))')
+        .select('id,status,victim_lat,victim_lon,message,image_url,image_mime_type,started_at,users!sos_sessions_victim_id_fkey(name),sos_responders(id,status,responder_id,users!sos_responders_responder_id_fkey(id,name,latitude,longitude))')
         .eq('share_token', token).maybeSingle();
       if (!tracked) return trackingMatch[2]
         ? fail('Unknown tracking link', 404)
@@ -89,6 +91,7 @@ Deno.serve(async (req) => {
         startedAt: tracked.started_at,
         alerted: (tracked.sos_responders || []).length,
         imageUrl: await signedImageUrl(tracked.image_url),
+        mediaType: mediaType(tracked.image_mime_type),
         responders: (tracked.sos_responders || []).map((row: any) => ({
           id: row.users?.id || row.responder_id,
           name: row.users?.name || 'Responder',
@@ -166,9 +169,11 @@ Deno.serve(async (req) => {
       const image = input.image;
       if (image?.dataUri) {
         const match = /^data:([^;]+);base64,(.+)$/s.exec(image.dataUri);
-        if (!match) return fail('Invalid image');
+        if (!match || !['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'video/mp4', 'video/quicktime', 'video/3gpp'].includes(match[1].toLowerCase())) return fail('Unsupported media type');
         const bytes = Uint8Array.from(atob(match[2]), c => c.charCodeAt(0));
-        const key = `sos/${crypto.randomUUID()}.jpg`;
+        const maxBytes = match[1].toLowerCase().startsWith('video/') ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (bytes.byteLength > maxBytes) return fail(match[1].toLowerCase().startsWith('video/') ? 'Video must be 20 MB or smaller' : 'Image must be 5 MB or smaller');
+        const key = `sos/${crypto.randomUUID()}.${mediaExtension(match[1].toLowerCase())}`;
         const upload = await db.storage.from('sos-media').upload(key, bytes, { contentType: match[1], upsert: false });
         if (upload.error) throw upload.error;
         await db.from('sos_sessions').update({ image_url: key, image_mime_type: match[1], image_name: String(image.fileName || key) }).eq('id', data.id).eq('victim_id', uid);
@@ -256,7 +261,7 @@ Deno.serve(async (req) => {
       }));
       return json({
         active: !!data,
-        sos: data ? { ...data, imageUrl } : data,
+        sos: data ? { ...data, imageUrl, mediaType: mediaType(data.image_mime_type) } : data,
         shareUrl: data?.share_token ? publicViewerUrl(data.share_token) : null,
         contacts,
         responders,
@@ -269,7 +274,7 @@ Deno.serve(async (req) => {
       }
 
       const { data: activeSOS = [], error: activeError } = await db.from('sos_sessions')
-        .select('id,victim_id,victim_lat,victim_lon,message,image_url,range_km,status,users!sos_sessions_victim_id_fkey(id,name)')
+        .select('id,victim_id,victim_lat,victim_lon,message,image_url,image_mime_type,range_km,status,users!sos_sessions_victim_id_fkey(id,name)')
         .eq('status', 'active');
       if (activeError) throw activeError;
 
@@ -288,7 +293,7 @@ Deno.serve(async (req) => {
       }
 
       const { data: rows = [], error } = await db.from('sos_responders')
-        .select('status,sos_sessions!inner(id,victim_id,victim_lat,victim_lon,message,image_url,range_km,status,users!sos_sessions_victim_id_fkey(id,name))')
+        .select('status,sos_sessions!inner(id,victim_id,victim_lat,victim_lon,message,image_url,image_mime_type,range_km,status,users!sos_sessions_victim_id_fkey(id,name))')
         .eq('responder_id', uid).in('status', ['alerted', 'responding']);
       if (error) throw error;
       const alerts = await Promise.all(rows.filter((row: any) => row.sos_sessions?.status === 'active').map(async (row: any) => {
@@ -299,6 +304,7 @@ Deno.serve(async (req) => {
           victim: { id: victim?.id || sos.victim_id, name: victim?.name || 'Someone nearby' },
           message: sos.message,
           imageUrl: await signedImageUrl(sos.image_url),
+          mediaType: mediaType(sos.image_mime_type),
           location,
           distance: distanceKm(location.lat, location.lon, Number(me.latitude), Number(me.longitude)),
           range: Number(sos.range_km),
@@ -310,7 +316,7 @@ Deno.serve(async (req) => {
     if (/^\/sos\/\d+$/.test(p)) {
       const { data, error } = await db.from('sos_sessions').select('*,sos_responders(*)').eq('id', Number(p.split('/').pop())).single();
       if (error) throw error;
-      return json({ sos: data ? { ...data, imageUrl: await signedImageUrl(data.image_url) } : data });
+      return json({ sos: data ? { ...data, imageUrl: await signedImageUrl(data.image_url), mediaType: mediaType(data.image_mime_type) } : data });
     }
     if (/^\/sos\/\d+\/(respond|withdraw|arrived|end)$/.test(p) && req.method === 'POST') { const parts = p.split('/'), id = Number(parts[2]), action = parts[3]; if (action === 'end') await db.from('sos_sessions').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', id).eq('victim_id', uid); else await db.from('sos_responders').upsert({ sos_id: id, responder_id: uid, status: action === 'respond' ? 'responding' : action === 'arrived' ? 'arrived' : 'withdrawn', responded_at: new Date().toISOString() }, { onConflict: 'sos_id,responder_id' }); return json({ success: true }); }
     if (p === '/history') {
@@ -323,6 +329,7 @@ Deno.serve(async (req) => {
       const history = await Promise.all(data.map(async (event: any) => ({
         ...event,
         imageUrl: await signedImageUrl(event.image_url),
+        mediaType: mediaType(event.image_mime_type),
         responders: (event.sos_responders || []).map((row: any) => ({
           id: row.users?.id || row.responder_id,
           name: row.users?.name || 'Responder',
@@ -398,7 +405,7 @@ Deno.serve(async (req) => {
         fallback: true,
       });
     }
-    if (/^\/sos\/\d+\/image$/.test(p) && req.method === 'POST') { const id = Number(p.split('/')[2]), image = input.image; if (!image?.dataUri) return fail('Image required'); const m = /^data:([^;]+);base64,(.+)$/s.exec(image.dataUri); if (!m) return fail('Invalid image'); const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)), key = 'sos/' + crypto.randomUUID() + '.jpg'; const up = await db.storage.from('sos-media').upload(key, bytes, { contentType: m[1], upsert: false }); if (up.error) throw up.error; await db.from('sos_sessions').update({ image_url: key, image_mime_type: m[1], image_name: String(image.fileName || key) }).eq('id', id).eq('victim_id', uid); return json({ success: true, imageUrl: key }); }
+    if (/^\/sos\/\d+\/image$/.test(p) && req.method === 'POST') { const id = Number(p.split('/')[2]), image = input.image; if (!image?.dataUri) return fail('Media required'); const m = /^data:([^;]+);base64,(.+)$/s.exec(image.dataUri); if (!m) return fail('Invalid media'); const mime = m[1].toLowerCase(); if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif', 'video/mp4', 'video/quicktime', 'video/3gpp'].includes(mime)) return fail('Unsupported media type'); const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); const maxBytes = mime.startsWith('video/') ? 20 * 1024 * 1024 : 5 * 1024 * 1024; if (bytes.byteLength > maxBytes) return fail(mime.startsWith('video/') ? 'Video must be 20 MB or smaller' : 'Image must be 5 MB or smaller'); const key = 'sos/' + crypto.randomUUID() + '.' + mediaExtension(mime); const up = await db.storage.from('sos-media').upload(key, bytes, { contentType: mime, upsert: false }); if (up.error) throw up.error; await db.from('sos_sessions').update({ image_url: key, image_mime_type: mime, image_name: String(image.fileName || key) }).eq('id', id).eq('victim_id', uid); return json({ success: true, imageUrl: key, mediaType: mediaType(mime) }); }
     if (p === '/timer/extend' && req.method === 'POST') { const mins = Math.min(1440, Math.max(1, Number(input.minutes) || 10)); const { data } = await db.from('safety_timers').select('*').eq('user_id', uid).eq('status', 'running').maybeSingle(); if (!data) return fail('No running timer', 404); const until = new Date(new Date(data.expires_at).getTime() + mins * 60000).toISOString(); const { data: timer, error } = await db.from('safety_timers').update({ expires_at: until }).eq('id', data.id).select().single(); if (error) throw error; return json({ success: true, timer }); }
     if (p === '/notifications/send' && req.method === 'POST') { if (req.headers.get('x-job-secret') !== serviceKey) return fail('Unauthorized', 401); const messages = Array.isArray(input.messages) ? input.messages : []; const response = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(messages.map((m: any) => ({ to: m.to, title: m.title || 'RESQORA alert', body: m.body || 'Someone nearby needs help', data: m.data || {}, sound: 'default', priority: 'high' }))) }); return json({ sent: messages.length, result: await response.json() }); }
     if (p === '/jobs/timers' && req.method === 'POST') { if (req.headers.get('x-job-secret') !== serviceKey) return fail('Unauthorized', 401); const { data = [] } = await db.from('safety_timers').select('*').eq('status', 'running').lte('expires_at', new Date().toISOString()); for (const timer of data) { await db.from('safety_timers').update({ status: 'expired' }).eq('id', timer.id); await db.from('sos_sessions').insert({ victim_id: timer.user_id, victim_lat: 0, victim_lon: 0, message: timer.note || 'My safety timer expired. Please check on me.', range_km: 2, status: 'active' }); } return json({ expired: data.length }); }

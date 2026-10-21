@@ -63,14 +63,22 @@ export function getSOSImageUrl(source) {
   );
 }
 
+export function getSOSMediaSource(source) {
+  const uri = getSOSImageUrl(source);
+  if (!uri) return null;
+  const mimeType = source.image_mime_type
+    || source.imageMimeType
+    || (source.mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+  return { uri, headers: NGROK_HEADERS, mediaType: source.mediaType || mimeType.split('/')[0], mimeType };
+}
+
 // ngrok's free tier answers plain requests with an interstitial page; this
 // header tells it to serve the real resource instead.
 const NGROK_HEADERS = { 'ngrok-skip-browser-warning': 'true' };
 
 /** Ready-to-use <Image source={...} /> for an SOS photo, or null. */
 export function getSOSImageSource(source) {
-  const uri = getSOSImageUrl(source);
-  return uri ? { uri, headers: NGROK_HEADERS } : null;
+  return getSOSMediaSource(source);
 }
 
 /** fetch(), but a dead network says so in words instead of "Network request failed". */
@@ -457,6 +465,7 @@ function buildImageBody(image) {
     url: image.url,
     mimeType: image.mimeType,
     fileName: image.fileName,
+    mediaType: image.mediaType,
   };
 }
 

@@ -95,7 +95,7 @@ export default function SOSTrigger() {
         setPhoto(picked);
       }
     } catch (err) {
-      Alert.alert('Photo not attached', err.message);
+      Alert.alert('Media not attached', err.message);
     } finally {
       setBusyPhoto(false);
       if (stageRef.current === 'countdown' && !sentRef.current) runTicker();
@@ -270,9 +270,13 @@ export default function SOSTrigger() {
 
             {photo ? (
               <View style={styles.photoRow}>
-                <Image source={{ uri: photo.uri }} style={styles.photo} />
+                {photo.mediaType === 'video'
+                  ? <View style={[styles.photo, styles.videoPreview]}><Ionicons name="videocam" size={24} color={Colors.muted} /></View>
+                  : <Image source={{ uri: photo.uri }} style={styles.photo} />}
                 <View style={styles.photoText}>
-                  <Text style={styles.photoTitle}>Photo attached</Text>
+                  <Text style={styles.photoTitle}>
+                    {photo.mediaType === 'video' ? 'Video attached' : 'Photo attached'}
+                  </Text>
                   <Pressable onPress={removePhoto} hitSlop={10} accessibilityRole="button">
                     <Text style={styles.photoRemove}>Remove</Text>
                   </Pressable>
@@ -281,8 +285,8 @@ export default function SOSTrigger() {
             ) : null}
 
             <Button
-              label={busyPhoto ? 'Opening…' : photo ? 'Change photo' : 'Add a photo'}
-              icon="camera"
+              label={busyPhoto ? 'Opening…' : photo ? 'Change media' : 'Add photo or video'}
+              icon={photo?.mediaType === 'video' ? 'videocam' : 'camera'}
               variant="ghost"
               onPress={attachPhoto}
               disabled={busyPhoto || sending}
@@ -343,6 +347,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.divider, paddingTop: Space.md,
   },
   photo: { width: 56, height: 56, borderRadius: Radius.sm, backgroundColor: Colors.elevated },
+  videoPreview: { alignItems: 'center', justifyContent: 'center' },
   photoText: { flex: 1, gap: 2 },
   photoTitle: { ...Type.bodyStrong, color: Colors.text },
   photoRemove: { ...Type.caption, color: Colors.danger },

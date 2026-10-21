@@ -75,7 +75,8 @@
         }
       ],
       "expo-status-bar",
-      "expo-audio"
+      "expo-audio",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": false
@@ -87,7 +88,7 @@
       "apiUrl": "https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api",
       "eas": {
         "projectId": "c8f3439c-aa58-4004-9ddf-6336e4f46c3b"
-      },
+      }
     },
     "notification": {
       "color": "#EF4444",
