@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Pressable, ScrollView, Image, Alert,
+  View, Text, StyleSheet, Animated, Pressable, ScrollView, Image, Alert, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -26,6 +26,7 @@ export default function SOSTrigger() {
   const [stage, setStage] = useState('idle');
   const [seconds, setSeconds] = useState(COUNTDOWN_S);
   const [photo, setPhoto] = useState(null);
+  const [message, setMessage] = useState(DEFAULT_SOS_MESSAGE);
   const [busyPhoto, setBusyPhoto] = useState(false);
 
   const hold = useRef(new Animated.Value(0)).current;
@@ -119,7 +120,7 @@ export default function SOSTrigger() {
       const result = await triggerSOS(
         coords.latitude,
         coords.longitude,
-        DEFAULT_SOS_MESSAGE,
+        message.trim() || DEFAULT_SOS_MESSAGE,
         DEFAULT_SOS_RANGE_KM,
         photoRef.current
       );
@@ -247,13 +248,25 @@ export default function SOSTrigger() {
 
             <View style={styles.line}>
               <Ionicons name="chatbubble-ellipses" size={16} color={Colors.danger} />
-              <Text style={styles.lineText}>“{DEFAULT_SOS_MESSAGE}”</Text>
+              <Text style={styles.lineText}>“{message.trim() || DEFAULT_SOS_MESSAGE}”</Text>
             </View>
 
             <View style={styles.line}>
               <Ionicons name="people" size={16} color={Colors.danger} />
               <Text style={styles.lineText}>Everyone within {DEFAULT_SOS_RANGE_KM} km</Text>
             </View>
+
+            <TextInput
+              value={message}
+              onChangeText={setMessage}
+              placeholder={DEFAULT_SOS_MESSAGE}
+              placeholderTextColor={Colors.subtle}
+              multiline
+              maxLength={300}
+              editable={!sending}
+              accessibilityLabel="Emergency message"
+              style={styles.messageInput}
+            />
 
             {photo ? (
               <View style={styles.photoRow}>
@@ -319,6 +332,11 @@ const styles = StyleSheet.create({
   payload: { gap: Space.md, marginBottom: Space.xl },
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: Space.md },
   lineText: { flex: 1, ...Type.body, color: Colors.muted },
+  messageInput: {
+    ...Type.body, color: Colors.text, backgroundColor: Colors.elevated,
+    borderRadius: Radius.md, paddingHorizontal: Space.lg, paddingVertical: Space.md,
+    borderWidth: 1, borderColor: Colors.border, minHeight: 76, textAlignVertical: 'top',
+  },
 
   photoRow: {
     flexDirection: 'row', alignItems: 'center', gap: Space.md,
