@@ -21,6 +21,16 @@ const publicViewerUrl = (token: string) =>
 const issue = (id: number) => new SignJWT({ userId: id }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d').sign(secret);
 const authUser = async (req: Request) => { const raw = req.headers.get('authorization')?.replace(/^Bearer\s+/i, ''); if (!raw) return null; try { const { payload } = await jwtVerify(raw, secret); return Number(payload.userId) || null; } catch { return null; } };
 const requireUser = async (req: Request) => { const id = await authUser(req); if (!id) throw Object.assign(new Error('Invalid or expired token'), { status: 401 }); return id; };
+const sosParticipant = async (sosId: number, uid: number) => {
+  const { data: sos, error } = await db.from('sos_sessions').select('id,victim_id,status').eq('id', sosId).maybeSingle();
+  if (error) throw error;
+  if (!sos || sos.status !== 'active') return null;
+  if (Number(sos.victim_id) === uid) return sos;
+  const { data: responder, error: responderError } = await db.from('sos_responders')
+    .select('id').eq('sos_id', sosId).eq('responder_id', uid).in('status', ['alerted', 'responding', 'arrived']).maybeSingle();
+  if (responderError) throw responderError;
+  return responder ? sos : null;
+};
 const distanceKm = (aLat: number, aLon: number, bLat: number, bLon: number) => {
   const rad = Math.PI / 180;
   const dLat = (bLat - aLat) * rad, dLon = (bLon - aLon) * rad;
@@ -319,6 +329,35 @@ Deno.serve(async (req) => {
       return json({ sos: data ? { ...data, imageUrl: await signedImageUrl(data.image_url), mediaType: mediaType(data.image_mime_type) } : data });
     }
     if (/^\/sos\/\d+\/(respond|withdraw|arrived|end)$/.test(p) && req.method === 'POST') { const parts = p.split('/'), id = Number(parts[2]), action = parts[3]; if (action === 'end') await db.from('sos_sessions').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', id).eq('victim_id', uid); else await db.from('sos_responders').upsert({ sos_id: id, responder_id: uid, status: action === 'respond' ? 'responding' : action === 'arrived' ? 'arrived' : 'withdrawn', responded_at: new Date().toISOString() }, { onConflict: 'sos_id,responder_id' }); return json({ success: true }); }
+    if (/^\/sos\/\d+\/messages$/.test(p)) {
+      const sosId = Number(p.split('/')[2]);
+      if (!Number.isInteger(sosId)) return fail('Invalid SOS');
+      if (!await sosParticipant(sosId, uid)) return fail('You are not part of this SOS', 403);
+      if (req.method === 'GET') {
+        const { data: messages = [], error } = await db.from('sos_messages')
+          .select('id,sos_id,sender_id,body,created_at,users!sos_messages_sender_id_fkey(name)')
+          .eq('sos_id', sosId).order('created_at', { ascending: true }).limit(100);
+        if (error) throw error;
+        return json({ messages: messages.map((message: any) => ({
+          id: message.id, sosId: message.sos_id, senderId: message.sender_id,
+          senderName: message.users?.name || 'Participant', body: message.body,
+          createdAt: message.created_at,
+        })) });
+      }
+      if (req.method === 'POST') {
+        const body = String(input.body || '').trim();
+        if (!body) return fail('Message cannot be empty');
+        if (body.length > 500) return fail('Message must be 500 characters or less');
+        const { data: message, error } = await db.from('sos_messages')
+          .insert({ sos_id: sosId, sender_id: uid, body }).select('id,sos_id,sender_id,body,created_at,users!sos_messages_sender_id_fkey(name)').single();
+        if (error) throw error;
+        return json({ message: {
+          id: message.id, sosId: message.sos_id, senderId: message.sender_id,
+          senderName: message.users?.name || 'Participant', body: message.body,
+          createdAt: message.created_at,
+        } });
+      }
+    }
     if (p === '/history') {
       const { data = [], error } = await db.from('sos_sessions')
         .select('*,sos_responders(id,responder_id,status,users!sos_responders_responder_id_fkey(id,name,latitude,longitude))')

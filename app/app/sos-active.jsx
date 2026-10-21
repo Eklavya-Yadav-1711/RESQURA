@@ -19,6 +19,7 @@ import LiveMap from '../components/LiveMap';
 import { Avatar, Button, Card, EmptyState, Overline, Pill, Screen, Stat } from '../components/ui';
 import Photo from '../components/Photo';
 import NearestHelp from '../components/NearestHelp';
+import SOSChat from '../components/SOSChat';
 import { Colors, Space, Type } from '../theme';
 
 /** Only this re-renders each second — not the map and every card around it. */
@@ -376,6 +377,8 @@ export default function SOSActive() {
               );
             })
           )}
+
+          <SOSChat sosId={sosId} userId={user?.id} />
         </ScrollView>
 
         <View style={styles.footer}>

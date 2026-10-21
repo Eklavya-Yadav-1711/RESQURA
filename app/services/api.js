@@ -533,6 +533,18 @@ export async function markArrived(sosId) {
   return await authFetch(`/sos/${sosId}/arrived`, { method: 'POST' });
 }
 
+export async function getSOSMessages(sosId) {
+  const data = await authFetch(`/sos/${sosId}/messages`);
+  return Array.isArray(data.messages) ? data.messages : [];
+}
+
+export async function sendSOSMessage(sosId, body) {
+  return await authFetch(`/sos/${sosId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
+}
+
 export async function endSOS(sosId) {
   return await authFetch(`/sos/${sosId}/end`, { method: 'POST' });
 }

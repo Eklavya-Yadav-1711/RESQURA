@@ -9,13 +9,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   respondToSOS, markArrived, withdrawFromSOS, sendResponderLocation, getSocket,
-  getCachedSOSAlert, getSOSDetails, getSOSImageSource, DEFAULT_SOS_MESSAGE,
+  getCachedSOSAlert, getSOSDetails, getSOSImageSource, getStoredUser, DEFAULT_SOS_MESSAGE,
 } from '../services/api';
 import { formatKm } from '../services/format';
 import LiveMap from '../components/LiveMap';
 import { Button, Card, Overline, Screen } from '../components/ui';
 import Photo from '../components/Photo';
 import { Colors, Space, Type } from '../theme';
+import SOSChat from '../components/SOSChat';
 
 export default function ResponderNav() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function ResponderNav() {
   const [distance, setDistance] = useState(null);
   const [arriving, setArriving] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [user, setUser] = useState(null);
 
   const watcher = useRef(null);
   const victimRef = useRef({ lat: Number(victimLat), lon: Number(victimLon) });
@@ -56,6 +58,7 @@ export default function ResponderNav() {
     });
 
     start();
+    getStoredUser().then(setUser).catch(() => {});
 
     return () => {
       watcher.current?.remove();
@@ -234,6 +237,8 @@ export default function ResponderNav() {
             variant="ghost"
             onPress={openDirections}
           />
+
+          <SOSChat sosId={sosId} userId={user?.id} />
         </ScrollView>
 
         <View style={styles.footer}>
