@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, ScrollView,
+  View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, ScrollView, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSOSMessages, sendSOSMessage } from '../services/api';
@@ -45,7 +45,10 @@ export default function SOSChat({ sosId, userId }) {
         if (result.message) setMessages((current) => [...current, result.message]);
       }
     } catch (err) {
-      if (mounted.current) setDraft(body);
+      if (mounted.current) {
+        setDraft(body);
+        Alert.alert('Message not sent', err.message || 'Could not send this message. Try again.');
+      }
     } finally {
       if (mounted.current) setSending(false);
     }

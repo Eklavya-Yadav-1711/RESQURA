@@ -335,12 +335,18 @@ Deno.serve(async (req) => {
       if (!await sosParticipant(sosId, uid)) return fail('You are not part of this SOS', 403);
       if (req.method === 'GET') {
         const { data: messages = [], error } = await db.from('sos_messages')
-          .select('id,sos_id,sender_id,body,created_at,users!sos_messages_sender_id_fkey(name)')
+          .select('id,sos_id,sender_id,body,created_at')
           .eq('sos_id', sosId).order('created_at', { ascending: true }).limit(100);
         if (error) throw error;
+        const senderIds = [...new Set(messages.map((message: any) => message.sender_id))];
+        const { data: senders = [], error: senderError } = senderIds.length
+          ? await db.from('users').select('id,name').in('id', senderIds)
+          : { data: [], error: null };
+        if (senderError) throw senderError;
+        const names = new Map(senders.map((sender: any) => [sender.id, sender.name]));
         return json({ messages: messages.map((message: any) => ({
           id: message.id, sosId: message.sos_id, senderId: message.sender_id,
-          senderName: message.users?.name || 'Participant', body: message.body,
+          senderName: names.get(message.sender_id) || 'Participant', body: message.body,
           createdAt: message.created_at,
         })) });
       }
@@ -349,11 +355,13 @@ Deno.serve(async (req) => {
         if (!body) return fail('Message cannot be empty');
         if (body.length > 500) return fail('Message must be 500 characters or less');
         const { data: message, error } = await db.from('sos_messages')
-          .insert({ sos_id: sosId, sender_id: uid, body }).select('id,sos_id,sender_id,body,created_at,users!sos_messages_sender_id_fkey(name)').single();
+          .insert({ sos_id: sosId, sender_id: uid, body }).select('id,sos_id,sender_id,body,created_at').single();
         if (error) throw error;
+        const { data: sender, error: senderError } = await db.from('users').select('name').eq('id', uid).maybeSingle();
+        if (senderError) throw senderError;
         return json({ message: {
           id: message.id, sosId: message.sos_id, senderId: message.sender_id,
-          senderName: message.users?.name || 'Participant', body: message.body,
+          senderName: sender?.name || 'Participant', body: message.body,
           createdAt: message.created_at,
         } });
       }
