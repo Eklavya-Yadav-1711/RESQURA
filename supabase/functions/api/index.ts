@@ -92,6 +92,18 @@ Deno.serve(async (req) => {
           headers: { ...cors, Location: `${viewerUrl}?token=${encodeURIComponent(token)}`, 'Cache-Control': 'no-store' },
         });
       }
+      const { data: publicMessages = [], error: publicMessagesError } = await db.from('sos_messages')
+        .select('id,sender_id,body,created_at')
+        .eq('sos_id', tracked.id)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (publicMessagesError) throw publicMessagesError;
+      const publicSenderIds = [...new Set(publicMessages.map((message: any) => message.sender_id))];
+      const { data: publicSenders = [], error: publicSendersError } = publicSenderIds.length
+        ? await db.from('users').select('id,name').in('id', publicSenderIds)
+        : { data: [], error: null };
+      if (publicSendersError) throw publicSendersError;
+      const publicNames = new Map(publicSenders.map((sender: any) => [sender.id, sender.name]));
       return json({
         status: tracked.status,
         victimName: (tracked.users as any)?.name || 'Someone',
@@ -102,6 +114,12 @@ Deno.serve(async (req) => {
         alerted: (tracked.sos_responders || []).length,
         imageUrl: await signedImageUrl(tracked.image_url),
         mediaType: mediaType(tracked.image_mime_type),
+        messages: publicMessages.map((message: any) => ({
+          id: message.id,
+          senderName: publicNames.get(message.sender_id) || 'Participant',
+          body: message.body,
+          createdAt: message.created_at,
+        })),
         responders: (tracked.sos_responders || []).map((row: any) => ({
           id: row.users?.id || row.responder_id,
           name: row.users?.name || 'Responder',
