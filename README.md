@@ -11,11 +11,14 @@
 
 ## What This Is
 
-A **fully working** community emergency response app. Two phones on the same WiFi network can:
+A **production-oriented** community emergency response app. Phones can work over
+mobile data through the deployed Supabase Edge API:
 - Register and login with real accounts
 - See real nearby users based on GPS range
 - Trigger a real SOS that alerts the other phone instantly
-- **Share live location + a default help message + one photo** with everyone within **2 km**
+- **Share live location + an editable help message + one photo or short video** with everyone within **2 km**
+- Chat privately with the SOS sender and responders in an SOS-scoped group chat
+- Share a read-only browser link with people who do not have the app
 - Responder navigates to victim with live distance tracking
 - Victim sees responders updating in real-time
 - End SOS and revoke all access
@@ -25,9 +28,10 @@ A **fully working** community emergency response app. Two phones on the same WiF
 | Part | Value |
 |------|-------|
 | Location | Live GPS coordinates, updated while the SOS is active |
-| Message | `"I am here. Please come and help me."` (server-side default) |
-| Photo | One optional image — camera or gallery, attachable before or during the SOS |
+| Message | Editable before sending; default is `"I am here. Please come and help me."`; max 300 characters |
+| Media | One optional photo or video; photos max 5 MB, videos max 30 seconds and 20 MB |
 | Radius | 2 km — everyone inside it is alerted |
+| Chat | Private SOS group chat; messages max 500 characters and visible to participants while active |
 
 ---
 
@@ -41,7 +45,7 @@ resqora-full/
 │   ├── storage.js   ← SOS photo storage on disk (served from /uploads)
 │   ├── push.js      ← Expo push alerts for in-range users who are offline
 │   ├── auth.js      ← JWT middleware
-│   ├── uploads/     ← SOS photos (auto-created)
+│   ├── uploads/     ← Legacy local media (production uses Supabase Storage)
 │   └── package.json
 │
 └── app/             ← Expo React Native app (run on both phones)
@@ -61,9 +65,10 @@ resqora-full/
     │   └── Logo.jsx
     ├── services/
     │   ├── api.js            ← REST + Socket.io client
-    │   ├── photo.js          ← Camera / gallery picker
+    │   ├── photo.js          ← Camera / gallery photo and video picker
     │   ├── notifications.js  ← Push registration (needs Firebase, see below)
     │   └── format.js         ← Distance, time and date formatting
+    ├── components/SOSChat.jsx ← Active SOS group chat
     └── theme.js              ← Design tokens (colour, type, spacing, radii)
 ```
 
@@ -104,7 +109,13 @@ Look for `inet` under `en0`. Example: `192.168.1.42`
 
 ## STEP 2 — Set Your IP in the App
 
-For local testing, add `EXPO_PUBLIC_API_URL` to `app/.env`:
+For production, `EXPO_PUBLIC_API_URL` points to:
+
+```text
+https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api
+```
+
+For legacy local testing only, add `EXPO_PUBLIC_API_URL` to `app/.env`:
 
 ```js
 EXPO_PUBLIC_API_URL=http://192.168.1.42:3000
@@ -177,14 +188,16 @@ npx expo start
 
 ### Triggering SOS:
 1. On Phone 1 → tap SOS → hold the button for 3 seconds
-2. Optionally tap "Add a photo" (camera or gallery), then "Send now" or let
+2. Edit the message if needed. Optionally tap "Add photo or video" (camera or gallery), then "Send now" or let
    the 5-second countdown finish
-3. **Phone 2 gets the alert instantly** — victim name, distance, the default
-   message and the photo, over a red sheet with sound and vibration
+3. **Phone 2 gets the alert instantly** — victim name, distance, the custom
+   message and media, over a red sheet with sound and vibration
 4. Phone 2 taps "I'm on my way" → live map with the route and distance
 5. Phone 1 watches Phone 2 move closer on its own map
 6. Phone 2 taps "I've arrived", or Phone 1 taps "I'm safe — end SOS"
 7. Both phones land on the resolved screen and location sharing stops
+8. While active, both phones can use **SOS group chat** to share offers and
+   requests such as “I have a rope” or “I am bringing towels”
 
 ---
 
@@ -222,6 +235,8 @@ If distance <= 2km → user gets SOS alert
 | GET | `/sos/active` | ✓ | Get your active SOS |
 | GET | `/sos/:id` | ✓ | Full SOS details (victim, message, photo, responders) |
 | POST | `/sos/:id/image` | ✓ | Attach or replace the photo mid-emergency |
+| GET | `/sos/:id/messages` | ✓ | Read the active SOS group chat |
+| POST | `/sos/:id/messages` | ✓ | Send a message to active SOS participants |
 | POST | `/sos/:id/respond` | ✓ | Respond to SOS |
 | POST | `/sos/:id/arrived` | ✓ | Mark as arrived |
 | POST | `/sos/:id/end` | ✓ | End SOS |
@@ -229,7 +244,7 @@ If distance <= 2km → user gets SOS alert
 | GET | `/profile/stats` | ✓ | SOS sent, times helped, member since |
 | GET | `/uploads/:file` | – | SOS photo files |
 | GET | `/t/:token` | – | Public live-tracking page for one SOS |
-| GET | `/t/:token/data` | – | Live JSON the tracking page polls |
+| GET | `/t/:token/data` | – | Live JSON, responders, media and read-only chat for the tracking page |
 | GET | `/contacts` | ✓ | Your emergency contacts |
 | POST | `/contacts` | ✓ | Add a contact (max 5) |
 | DELETE | `/contacts/:id` | ✓ | Remove a contact |
@@ -249,19 +264,21 @@ If distance <= 2km → user gets SOS alert
 {
   "lat": 28.6139,
   "lon": 77.2090,
-  "message": "I am here. Please come and help me.",  // optional, this is the default
+  "message": "I am stuck near the lake; I have no rope.", // optional, default available
   "range": 2,                                        // optional, defaults to 2 km
-  "image": {                                         // optional, one photo
+  "image": {                                         // optional, one photo or video
     "dataUri": "data:image/jpeg;base64,...",
     "mimeType": "image/jpeg",
-    "fileName": "scene.jpg"
+    "fileName": "scene.jpg",
+    "mediaType": "image"
   }
 }
 ```
 
-The photo is written to `server/uploads/` and only its URL is stored in the
-database and pushed over the socket — base64 never touches SQLite.
-Limits: 5 MB per image, jpeg/png/webp/heic/gif, one image per SOS.
+The production API stores media in the private Supabase `sos-media` bucket and
+returns short-lived signed URLs. Base64 is not stored in the database.
+Limits: 5 MB per image; 30 seconds and 20 MB per video; supported video types
+are MP4, MOV and 3GP.
 
 ## Socket Events
 
@@ -296,21 +313,25 @@ Auto-created as `server/database.db` on first run. Three tables:
 - **sos_responders** — sos_id, responder_id, status (alerted/responding/arrived/declined)
 - **emergency_contacts** — user_id, name, phone (max 5 per user)
 - **safety_timers** — user_id, note, status, expires_at, triggered_sos_id
+- **sos_messages** — active SOS chat messages, sender and timestamp
 
 Photos live on disk in `server/uploads/`, not in the database.
 
 ## Production database and uploads (Supabase)
 
 The production-ready Supabase schema is in
-[`supabase/migrations/20261020_resqora_initial.sql`](supabase/migrations/20261020_resqora_initial.sql).
+[`supabase/migrations/20261020_resqora_initial.sql`](supabase/migrations/20261020_resqora_initial.sql)
+and the later migrations in [`supabase/migrations/`](supabase/migrations/).
+These add video media support, the SOS chat table, and the PostgREST schema
+reload required for the chat API.
 It creates the application tables, indexes, database access protections and a
 private, 5 MB SOS-media bucket. Follow [`supabase/README.md`](supabase/README.md)
 to create the project and connect a deployed Node API.
 
-The Supabase **service-role key belongs only on the backend host**. Never add
-it to `app/.env`, `app.json`, source control or an Expo build. Supabase stores
-the data and media; deploy `server/` to a Node host with WebSocket support for
-the real-time Socket.IO part of RESQORA.
+The Supabase **service-role key belongs only in the Edge Function environment**.
+Never add it to `app/.env`, `app.json`, source control or an Expo build. The
+mobile app uses the HTTPS Supabase Edge API; the legacy `server/` folder is
+retained as reference code and is not the production mobile backend.
 
 ### Server environment variables (all optional)
 
@@ -360,12 +381,12 @@ network, so an SOS does not stop at the 2 km radius.
 the app opens your messaging app with them and the alert prefilled — one tap to
 send. No SMS gateway, no Twilio, no cost.
 
-**A public live-tracking link.** Every SOS gets an unguessable link like
-`https://your-server/t/KKTbVKtIRIWx`. Opening it shows a live map of the
-person's position, their message and their photo, updating every few seconds —
-in any browser, with no app and no account. It stops updating and says so the
-moment the emergency ends. Share it by SMS, WhatsApp or anything else through
-the share sheet.
+**A public live-tracking link.** Every SOS gets an unguessable GitHub Pages link
+like `https://eklavya-yadav-1711.github.io/RESQURA/?token=...`. Opening it shows
+the same read-only emergency view: live map, address, elapsed time, alert and
+responder status, custom message, photo/video playback and the SOS group chat.
+Visitors cannot send messages or modify the SOS. It stops updating and says so
+the moment the emergency ends. Share it by SMS, WhatsApp or the share sheet.
 
 ---
 
