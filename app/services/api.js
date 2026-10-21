@@ -397,10 +397,10 @@ export async function getTimer() {
   };
 }
 
-export async function startTimer(minutes, note) {
+export async function startTimer(seconds, note) {
   const data = await authFetch('/timer/start', {
     method: 'POST',
-    body: JSON.stringify({ minutes, note }),
+    body: JSON.stringify({ seconds, note }),
   });
   return { ...data, timer: normalizeTimer(data.timer) };
 }
@@ -419,6 +419,11 @@ export async function extendTimer(minutes = 10) {
     body: JSON.stringify({ minutes }),
   });
   return { ...data, timer: normalizeTimer(data.timer || { expires_at: data.expires_at }) };
+}
+
+export async function expireTimer() {
+  const data = await authFetch('/timer/expire', { method: 'POST' });
+  return { ...data, timer: normalizeTimer(data.timer) };
 }
 
 // --- EMERGENCY CONTACTS ----------------------------------------------------

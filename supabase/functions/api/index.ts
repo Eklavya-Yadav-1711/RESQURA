@@ -231,6 +231,9 @@ Deno.serve(async (req) => {
         const { error } = await db.from('sos_sessions').update({ share_token: data.share_token }).eq('id', data.id);
         if (error) throw error;
       }
+      const { data: contacts = [], error: contactsError } = await db.from('emergency_contacts')
+        .select('*').eq('user_id', uid).order('created_at');
+      if (contactsError) throw contactsError;
       const imageUrl = await signedImageUrl(data?.image_url);
       const responders = (data?.sos_responders || []).map((row: any) => ({
         id: row.users?.id || row.responder_id,
@@ -255,6 +258,7 @@ Deno.serve(async (req) => {
         active: !!data,
         sos: data ? { ...data, imageUrl } : data,
         shareUrl: data?.share_token ? publicViewerUrl(data.share_token) : null,
+        contacts,
         responders,
       });
     }
@@ -330,7 +334,52 @@ Deno.serve(async (req) => {
       return json({ history });
     }
     if (p === '/timer' && req.method === 'GET') { const { data } = await db.from('safety_timers').select('*').eq('user_id', uid).eq('status', 'running').maybeSingle(); return json({ timer: data }); }
-    if (p === '/timer/start' && req.method === 'POST') { const minutes = Math.min(1440, Math.max(1, Number(input.minutes) || 10)); const { data, error } = await db.from('safety_timers').insert({ user_id: uid, note: String(input.note || ''), expires_at: new Date(Date.now() + minutes * 60000).toISOString(), status: 'running' }).select().single(); if (error) throw error; return json({ timer: data }); }
+    if (p === '/timer/start' && req.method === 'POST') {
+      const requestedSeconds = Number(input.seconds);
+      const seconds = Number.isFinite(requestedSeconds)
+        ? Math.min(86400, Math.max(1, Math.round(requestedSeconds)))
+        : Math.min(86400, Math.max(60, (Number(input.minutes) || 10) * 60));
+      const { data, error } = await db.from('safety_timers').insert({
+        user_id: uid, note: String(input.note || ''),
+        expires_at: new Date(Date.now() + seconds * 1000).toISOString(), status: 'running',
+      }).select().single();
+      if (error) throw error;
+      return json({ timer: data });
+    }
+    if (p === '/timer/expire' && req.method === 'POST') {
+      const { data: timer, error: timerError } = await db.from('safety_timers')
+        .select('*').eq('user_id', uid).eq('status', 'running').lte('expires_at', new Date().toISOString()).maybeSingle();
+      if (timerError) throw timerError;
+      if (!timer) return json({ expired: false, timer: null });
+      const { data: updated, error: updateError } = await db.from('safety_timers')
+        .update({ status: 'expired' }).eq('id', timer.id).eq('status', 'running').select().maybeSingle();
+      if (updateError) throw updateError;
+      if (!updated) return json({ expired: false, timer: null });
+      const { data: user, error: userError } = await db.from('users')
+        .select('latitude,longitude').eq('id', uid).maybeSingle();
+      if (userError) throw userError;
+      const lat = Number(user?.latitude) || 0, lon = Number(user?.longitude) || 0;
+      const { data: sos, error: sosError } = await db.from('sos_sessions').insert({
+        victim_id: uid, victim_lat: lat, victim_lon: lon,
+        message: timer.note || 'My safety timer expired. Please check on me.',
+        range_km: 2, status: 'active', share_token: crypto.randomUUID().replaceAll('-', ''),
+      }).select().single();
+      if (sosError) throw sosError;
+      const { data: candidates, error: candidateError } = await db.from('users')
+        .select('id,latitude,longitude').neq('id', uid).not('latitude', 'is', null).not('longitude', 'is', null);
+      if (candidateError) throw candidateError;
+      const targets = (candidates || []).filter((candidate: any) =>
+        distanceKm(lat, lon, Number(candidate.latitude), Number(candidate.longitude)) <= 2
+      );
+      if (targets.length) {
+        const { error: responderError } = await db.from('sos_responders').upsert(
+          targets.map((candidate: any) => ({ sos_id: sos.id, responder_id: candidate.id, status: 'alerted' })),
+          { onConflict: 'sos_id,responder_id', ignoreDuplicates: true }
+        );
+        if (responderError) throw responderError;
+      }
+      return json({ expired: true, timer: null, sosId: sos.id, alerted: targets.length });
+    }
     if ((p === '/timer/checkin' || p === '/timer/cancel') && req.method === 'POST') { await db.from('safety_timers').update({ status: p.endsWith('cancel') ? 'cancelled' : 'checked_in' }).eq('user_id', uid).eq('status', 'running'); return json({ success: true }); }
     if (p === '/user/push-token' && req.method === 'POST') { await db.from('users').update({ push_token: String(input.token || '').slice(0, 300) }).eq('id', uid); return json({ success: true }); }
     if (p === '/profile/stats') { const { count } = await db.from('sos_sessions').select('*', { count: 'exact', head: true }).eq('victim_id', uid); return json({ totalSOS: count || 0 }); }

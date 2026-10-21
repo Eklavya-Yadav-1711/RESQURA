@@ -2,13 +2,18 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  getTimer, startTimer, checkInTimer, cancelTimer, extendTimer, getSocket,
+  getTimer, startTimer, checkInTimer, cancelTimer, extendTimer, expireTimer, getSocket,
 } from '../services/api';
 import { formatElapsed, parseServerDate } from '../services/format';
 import { Button, Card, Overline } from './ui';
 import { Colors, Space, Radius, Type } from '../theme';
 
 const PRESETS = [10, 20, 30, 60];
+const UNITS = [
+  { key: 'seconds', label: 'sec', multiplier: 1 },
+  { key: 'minutes', label: 'min', multiplier: 60 },
+  { key: 'hours', label: 'hr', multiplier: 3600 },
+];
 
 /**
  * "Expect me in 20 minutes." The countdown here is only a display — the
@@ -17,7 +22,9 @@ const PRESETS = [10, 20, 30, 60];
 export default function SafetyTimer({ onFired }) {
   const [timer, setTimer] = useState(null);
   const [remaining, setRemaining] = useState(0);
-  const [minutes, setMinutes] = useState(20);
+  const [durationSeconds, setDurationSeconds] = useState(20 * 60);
+  const [customDuration, setCustomDuration] = useState('');
+  const [unit, setUnit] = useState('minutes');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -56,7 +63,15 @@ export default function SafetyTimer({ onFired }) {
     const update = () => {
       const left = Math.round((deadline.getTime() - Date.now()) / 1000);
       setRemaining(left);
-      if (left <= 0) { clearInterval(tick.current); load(); }
+      if (left <= 0) {
+        clearInterval(tick.current);
+        expireTimer()
+          .then((data) => {
+            setTimer(data.timer);
+            if (data.sosId) onFired?.(data.sosId);
+          })
+          .catch(() => load());
+      }
     };
     update();
     tick.current = setInterval(update, 1000);
@@ -78,10 +93,20 @@ export default function SafetyTimer({ onFired }) {
   }
 
   async function begin() {
-    const data = await run(startTimer, minutes, note.trim() || null);
+    const selectedUnit = UNITS.find((item) => item.key === unit);
+    const typed = Number(customDuration);
+    const seconds = customDuration.trim()
+      ? Math.round(typed * (selectedUnit?.multiplier || 60))
+      : durationSeconds;
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 86400) {
+      Alert.alert('Safety timer', 'Enter a duration between 1 second and 24 hours.');
+      return;
+    }
+    const data = await run(startTimer, seconds, note.trim() || null);
     if (data) {
       setOpen(false);
       setNote('');
+      setCustomDuration('');
     }
   }
 
@@ -152,22 +177,50 @@ export default function SafetyTimer({ onFired }) {
             {PRESETS.map((value) => (
               <Pressable
                 key={value}
-                onPress={() => setMinutes(value)}
+                onPress={() => {
+                  setDurationSeconds(value * 60);
+                  setCustomDuration('');
+                  setUnit('minutes');
+                }}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: minutes === value }}
+                accessibilityState={{ selected: !customDuration && durationSeconds === value * 60 }}
                 style={({ pressed }) => [
                   styles.preset,
-                  minutes === value && styles.presetOn,
+                  !customDuration && durationSeconds === value * 60 && styles.presetOn,
                   pressed && { opacity: 0.7 },
                 ]}
               >
-                <Text style={[styles.presetText, minutes === value && styles.presetTextOn]}>
+                <Text style={[styles.presetText, !customDuration && durationSeconds === value * 60 && styles.presetTextOn]}>
                   {value} min
                 </Text>
               </Pressable>
             ))}
           </View>
 
+          <TextInput
+            value={customDuration}
+            onChangeText={setCustomDuration}
+            placeholder="Custom duration"
+            placeholderTextColor={Colors.subtle}
+            keyboardType="decimal-pad"
+            accessibilityLabel="Custom timer duration"
+            style={styles.duration}
+          />
+          <View style={styles.units}>
+            {UNITS.map((item) => (
+              <Pressable
+                key={item.key}
+                onPress={() => setUnit(item.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: unit === item.key }}
+                style={[styles.unit, unit === item.key && styles.unitOn]}
+              >
+                <Text style={[styles.presetText, unit === item.key && styles.presetTextOn]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <TextInput
             value={note}
             onChangeText={setNote}
@@ -218,4 +271,16 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md, paddingHorizontal: Space.lg, paddingVertical: Space.md,
     borderWidth: 1, borderColor: Colors.border, minHeight: 48,
   },
+  duration: {
+    ...Type.body, color: Colors.text, backgroundColor: Colors.elevated,
+    borderRadius: Radius.md, paddingHorizontal: Space.lg, paddingVertical: Space.md,
+    borderWidth: 1, borderColor: Colors.border, minHeight: 48,
+  },
+  units: { flexDirection: 'row', gap: Space.sm },
+  unit: {
+    paddingHorizontal: Space.lg, paddingVertical: Space.sm,
+    borderRadius: Radius.pill, backgroundColor: Colors.elevated,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  unitOn: { backgroundColor: Colors.dangerSoft, borderColor: Colors.danger },
 });
