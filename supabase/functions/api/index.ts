@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     if (trackingMatch) {
       const token = trackingMatch[1];
       const { data: tracked } = await db.from('sos_sessions')
-        .select('id,status,victim_lat,victim_lon,message,image_url,users!sos_sessions_victim_id_fkey(name),sos_responders(id,status,responder_id,users!sos_responders_responder_id_fkey(id,name,latitude,longitude))')
+        .select('id,status,victim_lat,victim_lon,message,image_url,started_at,users!sos_sessions_victim_id_fkey(name),sos_responders(id,status,responder_id,users!sos_responders_responder_id_fkey(id,name,latitude,longitude))')
         .eq('share_token', token).maybeSingle();
       if (!tracked) return trackingMatch[2]
         ? fail('Unknown tracking link', 404)
@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
         message: tracked.message,
         lat: Number(tracked.victim_lat),
         lon: Number(tracked.victim_lon),
+        startedAt: tracked.started_at,
+        alerted: (tracked.sos_responders || []).length,
         imageUrl: await signedImageUrl(tracked.image_url),
         responders: (tracked.sos_responders || []).map((row: any) => ({
           id: row.users?.id || row.responder_id,
@@ -93,6 +95,15 @@ Deno.serve(async (req) => {
           status: row.status,
           lat: Number(row.users?.latitude),
           lon: Number(row.users?.longitude),
+          distance: Number.isFinite(Number(row.users?.latitude))
+            && Number.isFinite(Number(row.users?.longitude))
+            ? distanceKm(
+              Number(tracked.victim_lat),
+              Number(tracked.victim_lon),
+              Number(row.users.latitude),
+              Number(row.users.longitude)
+            )
+            : null,
         })),
       });
     }

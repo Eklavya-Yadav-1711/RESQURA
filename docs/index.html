@@ -6,70 +6,56 @@
   <title>RESQORA live emergency</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
-    body { margin: 0; background: #0a1628; color: #f8fafc; font: 16px system-ui, sans-serif; }
-    main { max-width: 720px; margin: auto; padding: 20px; }
-    h1 { font-size: 22px; margin: 0 0 8px; }
-    #status { color: #cbd5e1; margin-bottom: 14px; }
-    #map { height: 60vh; min-height: 320px; border-radius: 14px; overflow: hidden; }
-    .ended { color: #86efac; }
+    :root{--bg:#071326;--card:#10223b;--raised:#172d49;--text:#f8fafc;--muted:#9fb0c6;--danger:#ef4444;--safe:#22c55e;--line:#29415f}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+    main{max-width:720px;margin:auto;padding:0 18px 28px}.banner{margin:0 -18px 18px;padding:14px 18px;background:#8d1821;text-align:center;font-weight:700}
+    h1{font-size:24px;margin:18px 0 5px}.sub{color:var(--muted);margin:0 0 18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+    #map{height:280px;border-radius:13px;overflow:hidden}.stats{display:grid;grid-template-columns:repeat(3,1fr);padding:0}.stat{text-align:center;padding:17px 8px;border-right:1px solid var(--line)}.stat:last-child{border:0}.value{font-size:23px;font-weight:800}.label,.meta{font-size:12px;color:var(--muted);margin-top:4px}
+    .eyebrow{font-size:11px;color:#9db4d1;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.message{font-size:17px;line-height:1.45;margin:10px 0 0}
+    .address{color:#cbd5e1;line-height:1.4;margin:8px 0 0}.photo{width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:14px}.people{display:grid;gap:10px;margin-top:12px}
+    .person{display:flex;align-items:center;gap:12px;background:var(--raised);border-radius:12px;padding:12px}.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#294b72;font-weight:800}
+    .person-main{flex:1;min-width:0}.name{font-weight:700}.status{font-size:12px;color:var(--muted);margin-top:3px}.pill{border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap}.coming{background:#164e35;color:#bbf7d0}.alerted{background:#334155;color:#dbeafe}.arrived{background:#166534;color:#dcfce7}
+    .empty{text-align:center;color:var(--muted);padding:18px 4px}.ended{background:#14532d}.error{color:#fca5a5}.leaflet-container{background:#dbeafe}
   </style>
 </head>
 <body>
   <main>
-    <h1>RESQORA emergency location</h1>
-    <div id="status">Loading live location...</div>
+    <div id="banner" class="banner">● SOS live — location is being shared</div>
+    <h1 id="title">Emergency location</h1>
+    <p id="subtitle" class="sub">Loading live emergency details...</p>
     <div id="map"></div>
+    <div class="card stats">
+      <div class="stat"><div id="elapsed" class="value">0:00</div><div class="label">Elapsed</div></div>
+      <div class="stat"><div id="alerted" class="value">0</div><div class="label">Alerted</div></div>
+      <div class="stat"><div id="coming" class="value">0</div><div class="label">Coming</div></div>
+    </div>
+    <section class="card">
+      <div class="eyebrow">Shared with responders</div>
+      <div id="message" class="message">Loading message...</div>
+      <div id="address" class="address">Finding the emergency address...</div>
+      <img id="photo" class="photo" alt="Photo shared with this emergency" hidden>
+    </section>
+    <section class="card">
+      <div class="eyebrow">People responding</div>
+      <div id="people" class="people"><div class="empty">Loading responder status...</div></div>
+    </section>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const apiBase = 'https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api';
-    const token = new URLSearchParams(location.search).get('token');
-    const status = document.getElementById('status');
-    const map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-    let victim;
-    let responders = [];
-
-    async function update() {
-      try {
-        if (!token) throw new Error('Missing tracking token');
-        const response = await fetch(`${apiBase}/t/${encodeURIComponent(token)}/data`, {
-          cache: 'no-store',
-        });
-        if (!response.ok) throw new Error('Tracking link unavailable');
-        const data = await response.json();
-        status.textContent = `${data.victimName || 'Someone'} needs help. ${data.message || ''}`;
-        if (data.status !== 'active') {
-          status.textContent = 'This emergency has ended.';
-          status.className = 'ended';
-        }
-        if (victim) map.removeLayer(victim);
-        responders.forEach((marker) => map.removeLayer(marker));
-        responders = [];
-        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
-
-        victim = L.circleMarker([data.lat, data.lon], {
-          radius: 9, color: '#ef4444', fillOpacity: 0.9,
-        }).addTo(map).bindPopup('Emergency location');
-        const points = [[data.lat, data.lon]];
-        (data.responders || []).forEach((responder) => {
-          if (!Number.isFinite(responder.lat) || !Number.isFinite(responder.lon)) return;
-          const marker = L.circleMarker([responder.lat, responder.lon], {
-            radius: 8, color: '#22c55e', fillOpacity: 0.9,
-          }).addTo(map).bindPopup(responder.name || 'Responder');
-          responders.push(marker);
-          points.push([responder.lat, responder.lon]);
-        });
-        map.fitBounds(points, { padding: [30, 30], maxZoom: 15 });
-      } catch (error) {
-        status.textContent = error.message;
-      }
-    }
-
-    update();
-    setInterval(update, 10000);
+    const apiBase='https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api';
+    const token=new URLSearchParams(location.search).get('token');
+    const map=L.map('map').setView([20,0],2);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    let victim,markers=[],startedAt,locationKey='',lastAddressKey='';
+    const $=id=>document.getElementById(id);
+    const statusText={alerted:'Alerted',responding:'On the way',arrived:'Arrived',withdrawn:'Not coming'};
+    function formatElapsed(){if(!startedAt)return'0:00';const s=Math.max(0,Math.floor((Date.now()-startedAt)/1000));return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+    function initials(name){return(name||'?').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()}
+    function renderPeople(data){const people=data.responders||[], coming=people.filter(x=>x.status==='responding'||x.status==='arrived');$('alerted').textContent=data.alerted??people.length;$('coming').textContent=coming.length;if(!people.length){$('people').innerHTML='<div class="empty">Waiting for someone to accept.<br>Nearby people have been alerted.</div>';return}
+      $('people').innerHTML=people.map(x=>{const s=x.status||'alerted';const label=statusText[s]||'Alerted';const distance=Number.isFinite(x.distance)?`${(x.distance<1?x.distance*1000:x.distance).toFixed(x.distance<1?0:1)} ${x.distance<1?'m':'km'} away`:'Location pending';return`<div class="person"><div class="avatar">${initials(x.name)}</div><div class="person-main"><div class="name">${x.name||'Responder'}</div><div class="status">${distance}</div></div><span class="pill ${s==='arrived'?'arrived':s==='responding'?'coming':'alerted'}">${label}</span></div>`}).join('')}
+    async function findAddress(lat,lon){const key=`${lat.toFixed(4)},${lon.toFixed(4)}`;if(key===lastAddressKey)return;lastAddressKey=key;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,{headers:{Accept:'application/json'}});if(r.ok){const d=await r.json();$('address').textContent=d.display_name||'Address unavailable'}}catch{$('address').textContent='Address unavailable'}}
+    async function update(){try{if(!token)throw Error('Missing tracking token');const r=await fetch(`${apiBase}/t/${encodeURIComponent(token)}/data`,{cache:'no-store'});if(!r.ok)throw Error('This tracking link is unavailable.');const d=await r.json();startedAt=Date.parse(d.startedAt);$('title').textContent=`${d.victimName||'Someone'} needs help`;$('subtitle').textContent=d.message||'Please come and help.';$('message').textContent=`“${d.message||'I am here. Please come and help me.'}”`;$('elapsed').textContent=formatElapsed();$('banner').textContent=d.status==='active'?'● SOS live — location is being shared':'✓ This emergency has ended';$('banner').className=d.status==='active'?'banner':'banner ended';if(d.imageUrl){$('photo').src=d.imageUrl;$('photo').hidden=false}else $('photo').hidden=true;renderPeople(d);if(Number.isFinite(d.lat)&&Number.isFinite(d.lon)){findAddress(d.lat,d.lon);if(victim)map.removeLayer(victim);markers.forEach(x=>map.removeLayer(x));markers=[];victim=L.circleMarker([d.lat,d.lon],{radius:10,color:'#ef4444',fillOpacity:.9}).addTo(map).bindPopup('Emergency location');const points=[[d.lat,d.lon]];(d.responders||[]).forEach(x=>{if(!Number.isFinite(x.lat)||!Number.isFinite(x.lon))return;const m=L.circleMarker([x.lat,x.lon],{radius:8,color:'#22c55e',fillOpacity:.9}).addTo(map).bindPopup(x.name||'Responder');markers.push(m);points.push([x.lat,x.lon])});const key=points.map(x=>x.join(',')).join('|');if(key!==locationKey){locationKey=key;map.fitBounds(points,{padding:[30,30],maxZoom:15})}}}catch(e){$('subtitle').textContent=e.message;$('people').innerHTML='<div class="empty error">Unable to load live emergency details.</div>'}}
+    update();setInterval(update,10000);setInterval(()=>$('elapsed').textContent=formatElapsed(),1000);
   </script>
 </body>
 </html>
