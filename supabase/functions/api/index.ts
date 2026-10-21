@@ -14,6 +14,8 @@ const publicApiUrl = (req: Request) => {
   const url = new URL(req.url);
   return `https://${url.host}/functions/v1/api`;
 };
+const publicViewerUrl = (token: string) =>
+  `https://eklavya-yadav-1711.github.io/RESQURA/?token=${encodeURIComponent(token)}`;
 const issue = (id: number) => new SignJWT({ userId: id }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d').sign(secret);
 const authUser = async (req: Request) => { const raw = req.headers.get('authorization')?.replace(/^Bearer\s+/i, ''); if (!raw) return null; try { const { payload } = await jwtVerify(raw, secret); return Number(payload.userId) || null; } catch { return null; } };
 const requireUser = async (req: Request) => { const id = await authUser(req); if (!id) throw Object.assign(new Error('Invalid or expired token'), { status: 401 }); return id; };
@@ -194,7 +196,7 @@ Deno.serve(async (req) => {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(messages),
         }).catch(() => {});
       }
-      return json({ success: true, sosId: data.id, sos: data, shareUrl: `${publicApiUrl(req)}/t/${shareToken}`, alerted: targets.length });
+      return json({ success: true, sosId: data.id, sos: data, shareUrl: publicViewerUrl(shareToken), alerted: targets.length });
     }
     if (p === '/sos/mine/clear' && req.method === 'POST') {
       const { data: cleared, error } = await db.from('sos_sessions')
@@ -241,7 +243,7 @@ Deno.serve(async (req) => {
       return json({
         active: !!data,
         sos: data ? { ...data, imageUrl } : data,
-        shareUrl: data?.share_token ? `${publicApiUrl(req)}/t/${data.share_token}` : null,
+        shareUrl: data?.share_token ? publicViewerUrl(data.share_token) : null,
         responders,
       });
     }

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RESQORA live emergency</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body { margin: 0; background: #0a1628; color: #f8fafc; font: 16px system-ui, sans-serif; }
+    main { max-width: 720px; margin: auto; padding: 20px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    #status { color: #cbd5e1; margin-bottom: 14px; }
+    #map { height: 60vh; min-height: 320px; border-radius: 14px; overflow: hidden; }
+    .ended { color: #86efac; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>RESQORA emergency location</h1>
+    <div id="status">Loading live location...</div>
+    <div id="map"></div>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const apiBase = 'https://zwvpqwudjvceusdcrdgv.supabase.co/functions/v1/api';
+    const token = new URLSearchParams(location.search).get('token');
+    const status = document.getElementById('status');
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+    let victim;
+    let responders = [];
+
+    async function update() {
+      try {
+        if (!token) throw new Error('Missing tracking token');
+        const response = await fetch(`${apiBase}/t/${encodeURIComponent(token)}/data`, {
+          cache: 'no-store',
+        });
+        if (!response.ok) throw new Error('Tracking link unavailable');
+        const data = await response.json();
+        status.textContent = `${data.victimName || 'Someone'} needs help. ${data.message || ''}`;
+        if (data.status !== 'active') {
+          status.textContent = 'This emergency has ended.';
+          status.className = 'ended';
+        }
+        if (victim) map.removeLayer(victim);
+        responders.forEach((marker) => map.removeLayer(marker));
+        responders = [];
+        if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
+
+        victim = L.circleMarker([data.lat, data.lon], {
+          radius: 9, color: '#ef4444', fillOpacity: 0.9,
+        }).addTo(map).bindPopup('Emergency location');
+        const points = [[data.lat, data.lon]];
+        (data.responders || []).forEach((responder) => {
+          if (!Number.isFinite(responder.lat) || !Number.isFinite(responder.lon)) return;
+          const marker = L.circleMarker([responder.lat, responder.lon], {
+            radius: 8, color: '#22c55e', fillOpacity: 0.9,
+          }).addTo(map).bindPopup(responder.name || 'Responder');
+          responders.push(marker);
+          points.push([responder.lat, responder.lon]);
+        });
+        map.fitBounds(points, { padding: [30, 30], maxZoom: 15 });
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    }
+
+    update();
+    setInterval(update, 10000);
+  </script>
+</body>
+</html>
