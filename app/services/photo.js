@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 30;
